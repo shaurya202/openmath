@@ -11,7 +11,7 @@ import {
   Moon,
   Sun,
   Github,
-  Sparkles,
+  Cpu,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -19,7 +19,6 @@ export const Navbar: React.FC = () => {
   const [isDark, setIsDark] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check initial dark mode from DOM or localStorage
     const saved = localStorage.getItem('openmath_theme');
     if (saved === 'light') {
       setIsDark(false);
@@ -53,7 +52,7 @@ export const Navbar: React.FC = () => {
     <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-dark-bg/80 border-b border-gray-200/80 dark:border-dark-border/80 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          {/* Logo & Model Badge */}
           <div className="flex items-center space-x-3">
             <Link href="/" className="flex items-center space-x-2.5 group">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
@@ -69,8 +68,9 @@ export const Navbar: React.FC = () => {
               </div>
             </Link>
 
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/50">
-              <Sparkles className="w-2.5 h-2.5 mr-1" /> Open Source
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 shadow-2xs">
+              <Cpu className="w-3 h-3 mr-1 text-purple-500" />
+              Ollama: gemma4:31b-cloud
             </span>
           </div>
 
