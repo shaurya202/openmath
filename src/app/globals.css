@@ -8,23 +8,32 @@
   --foreground-rgb: 15, 23, 42;
   --background-start-rgb: 248, 250, 252;
   --background-end-rgb: 255, 255, 255;
+  --workbench-border: #e2e8f0;
 }
 
 .dark {
   --foreground-rgb: 248, 250, 252;
-  --background-start-rgb: 11, 15, 25;
-  --background-end-rgb: 17, 24, 39;
+  --background-start-rgb: 9, 13, 22;
+  --background-end-rgb: 15, 23, 42;
+  --workbench-border: #1e293b;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: rgb(var(--background-start-rgb));
   min-height: 100vh;
+  letter-spacing: -0.011em;
+}
+
+/* Subtle Mathematical Coordinate Dot Grid for Blank Canvas */
+.math-grid-pattern {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .math-grid-pattern {
+  background-image: radial-gradient(rgba(51, 65, 85, 0.3) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* Custom scrollbars */

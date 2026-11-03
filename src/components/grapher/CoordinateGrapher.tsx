@@ -50,8 +50,18 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
   // Safe mathematical expression evaluator
   const evaluateExpr = useCallback((expr: string, xVal: number): number => {
     try {
-      // Replace algebraic syntax with JS Math functions
-      const sanitized = expr
+      // 1. Insert explicit multiplication for implicit syntax
+      // e.g. 4x -> 4*x, 4( -> 4*(, )x -> )*x, )( -> )*(
+      let sanitized = expr
+        .replace(/(\d+)\s*([a-zA-Z(])/g, '$1*$2')
+        .replace(/\)\s*(\d+|[a-zA-Z(])/g, ')*$1')
+        .replace(/\b([a-zA-Z]+)\s*\(/g, (match, fnName) => {
+          if (fnName === 'x') return 'x*(';
+          return match;
+        });
+
+      // 2. Replace algebraic syntax with JS Math functions
+      sanitized = sanitized
         .replace(/\^/g, '**')
         .replace(/\bsin\b/g, 'Math.sin')
         .replace(/\bcos\b/g, 'Math.cos')
@@ -198,13 +208,33 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
     draw();
   }, [draw]);
 
-  // Mouse pan controls
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleZoom = useCallback((factor: number) => {
+    setScale((prev) => Math.max(10, Math.min(200, prev * factor)));
+  }, []);
+
+  // Mouse wheel zoom listener (attached non-passively to prevent page scroll)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+      handleZoom(zoomFactor);
+    };
+
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [handleZoom]);
+
+  // Unified Pointer pan controls (handles mouse, touch, and stylus)
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = true;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -226,12 +256,11 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
-  };
-
-  const handleZoom = (factor: number) => {
-    setScale((prev) => Math.max(10, Math.min(200, prev * factor)));
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {}
   };
 
   const resetView = () => {
@@ -273,6 +302,7 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
               value={newExpr}
               onChange={(e) => setNewExpr(e.target.value)}
               placeholder="e.g. x^2 - 4x + 3, sin(x), 2*x"
+              aria-label="Mathematical function to plot"
               className="w-full pl-14 pr-3 py-2 text-sm bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
@@ -337,10 +367,10 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
             <>
               <canvas
                 ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
                 className="w-full h-full cursor-crosshair touch-none"
               />
               {/* Live Coordinates Pill */}

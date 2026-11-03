@@ -106,7 +106,7 @@ export const FlashcardsDeck: React.FC = () => {
         <div className="flex items-center space-x-2">
           <Brain className="w-5 h-5 text-brand-500" />
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Spaced Repetition Flashcards
+            Formula flashcards
           </h2>
         </div>
         <div className="flex items-center space-x-2">
@@ -118,7 +118,7 @@ export const FlashcardsDeck: React.FC = () => {
             className="flex items-center space-x-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-dark-surface hover:bg-gray-200 dark:hover:bg-dark-card transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Card</span>
+            <span>Add card</span>
           </button>
         </div>
       </div>

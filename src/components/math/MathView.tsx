@@ -21,7 +21,16 @@ export const MathView: React.FC<MathViewProps> = ({
     // If explicit displayMode is passed, render directly as a single block
     if (displayMode) {
       try {
-        const html = katex.renderToString(content, {
+        // Strip enclosing $$, $, \[, \] or \(, \) so KaTeX parses pure math expressions
+        const cleanContent = content
+          .trim()
+          .replace(/^\\\[\s*|\s*\\\]$/g, '')
+          .replace(/^\\\(\s*|\s*\\\)$/g, '')
+          .replace(/^(\$\$|\$)+/g, '')
+          .replace(/(\$\$|\$)+$/g, '')
+          .trim();
+
+        const html = katex.renderToString(cleanContent, {
           displayMode: true,
           throwOnError: false,
           strict: false,

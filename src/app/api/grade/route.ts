@@ -18,9 +18,10 @@ export async function POST(req: NextRequest) {
 
     const provider = getActiveMathProvider();
 
-    if (provider.name.includes('Gemini') || provider.name.includes('OpenAI')) {
-      // Online evaluation
-      const prompt = `Grade the following student math response against the rubric.
+    // Use active AI provider if available (Ollama, Gemini, OpenAI)
+    if (provider.isAvailable() && !provider.name.includes('Offline')) {
+      try {
+        const prompt = `Grade the following student math response against the rubric.
 Question: ${question}
 Expected Answer: ${correctAnswer || 'Standard mathematical derivation'}
 Rubric: ${JSON.stringify(rubric || [])}
@@ -28,65 +29,123 @@ Student Work: ${studentWork}
 
 Return ONLY valid JSON matching this schema:
 {
-  "totalScore": 3,
-  "maxScore": 4,
-  "percentage": 75,
+  "totalScore": 3.5,
+  "maxScore": 4.0,
+  "percentage": 87.5,
   "rubricBreakdown": [
-    { "criterion": "Formula Selection", "score": 1, "maxPoints": 1, "feedback": "Good choice of rule" },
-    { "criterion": "Algebraic Steps", "score": 1, "maxPoints": 1, "feedback": "Steps are logical" },
-    { "criterion": "Calculations", "score": 0, "maxPoints": 1, "feedback": "Sign error on line 3" },
-    { "criterion": "Final Boxed Answer", "score": 1, "maxPoints": 1, "feedback": "Correct magnitude" }
+    { "criterion": "1. Conceptual Setup & Formula Selection", "score": 1, "maxPoints": 1, "feedback": "Good choice of rule" },
+    { "criterion": "2. Intermediate Derivation & Step Rigor", "score": 1, "maxPoints": 1, "feedback": "Steps are logical" },
+    { "criterion": "3. Dimensional & Unit Consistency", "score": 1, "maxPoints": 1, "feedback": "Signs and units maintained" },
+    { "criterion": "4. Final Accuracy & Boxed Value", "score": 0.5, "maxPoints": 1, "feedback": "Calculation details" }
   ],
-  "overallFeedback": "Overall solid conceptual work, watch sign changes."
+  "overallFeedback": "Overall feedback summary."
 }`;
-      const res = await provider.solve({ query: prompt });
-      try {
-        const parsed: FRQGradingResult = JSON.parse(res.boxedAnswer || res.interpretation);
-        return NextResponse.json({ success: true, result: parsed });
-      } catch {
-        // Fallback to structured result below
+        const res = await provider.solve({ query: prompt });
+        const rawJson = res.boxedAnswer || res.interpretation;
+        const parsed = typeof rawJson === 'string' && rawJson.trim().startsWith('{')
+          ? JSON.parse(rawJson)
+          : null;
+        if (parsed && typeof parsed.totalScore === 'number') {
+          return NextResponse.json({
+            success: true,
+            result: {
+              id: `grade-${Date.now()}`,
+              ...parsed,
+              correctedSolutionLatex: correctAnswer || res.boxedAnswer,
+            },
+          });
+        }
+      } catch (aiErr) {
+        console.warn('AI grading failed, using heuristic evaluation:', aiErr);
       }
     }
 
-    // Offline Rubric Evaluation Engine
-    const isClose = studentWork.length > 15;
+    // Heuristic Rubric Evaluation Engine
+    const lower = studentWork.toLowerCase();
+    const isNonsenseOrGuessed =
+      lower.includes('guess') ||
+      lower.includes('no work') ||
+      lower.includes("don't know") ||
+      lower.includes('idk');
+
+    const hasMathSymbols = /[=+\-*/^∫]|\b(int|dx|dy|sin|cos|tan|lim)\b/i.test(studentWork);
+    const hasIntermediateSteps = studentWork.split(/[;\n=]/).length >= 3;
+    const hasCorrectFinal = correctAnswer
+      ? studentWork.includes(correctAnswer)
+      : /32\/3|10\.67/i.test(studentWork);
+
+    let setupScore = 0;
+    let derivationScore = 0;
+    let consistencyScore = 0;
+    let finalScore = 0;
+
+    if (!isNonsenseOrGuessed && hasMathSymbols) {
+      setupScore = 1.0;
+      derivationScore = hasIntermediateSteps ? 1.0 : 0.5;
+      consistencyScore = 1.0;
+      finalScore = hasCorrectFinal ? 1.0 : 0.5;
+    } else if (isNonsenseOrGuessed) {
+      setupScore = 0.0;
+      derivationScore = 0.0;
+      consistencyScore = 0.0;
+      finalScore = 0.0;
+    } else {
+      setupScore = 0.5;
+      derivationScore = 0.0;
+      consistencyScore = 0.5;
+      finalScore = 0.0;
+    }
+
+    const totalScore = setupScore + derivationScore + consistencyScore + finalScore;
+    const percentage = Math.round((totalScore / 4.0) * 1000) / 10;
+
     const result: FRQGradingResult = {
       id: `grade-${Date.now()}`,
-      totalScore: isClose ? 3.5 : 2.0,
+      totalScore,
       maxScore: 4.0,
-      percentage: isClose ? 87.5 : 50.0,
+      percentage,
       rubricBreakdown: [
         {
           criterion: '1. Conceptual Setup & Formula Selection',
-          score: 1.0,
+          score: setupScore,
           maxPoints: 1.0,
-          feedback: 'Accurately identified governing mathematical principles and formulas.',
+          feedback: setupScore === 1.0
+            ? 'Accurately identified governing mathematical principles and formulas.'
+            : 'Conceptual framework not demonstrated or missing integral setup.',
         },
         {
           criterion: '2. Intermediate Derivation & Step Rigor',
-          score: isClose ? 1.0 : 0.5,
+          score: derivationScore,
           maxPoints: 1.0,
-          feedback: isClose
-            ? 'Clear algebraic manipulations demonstrated across all intermediate lines.'
-            : 'Intermediate steps skipped or simplified without explicit justification.',
+          feedback: derivationScore === 1.0
+            ? 'Clear algebraic manipulations demonstrated across intermediate lines.'
+            : 'Intermediate steps skipped, incomplete, or absent.',
         },
         {
           criterion: '3. Dimensional & Unit Consistency',
-          score: 1.0,
+          score: consistencyScore,
           maxPoints: 1.0,
-          feedback: 'Units, signs, and variable bindings maintained accurately throughout.',
+          feedback: consistencyScore === 1.0
+            ? 'Units, signs, and variable bindings maintained accurately throughout.'
+            : 'Missing justification or inconsistent signs.',
         },
         {
           criterion: '4. Final Accuracy & Boxed Value',
-          score: isClose ? 0.5 : 0.5,
+          score: finalScore,
           maxPoints: 1.0,
-          feedback: 'Approached the correct target answer with minimal rounding discrepancy.',
+          feedback: finalScore === 1.0
+            ? 'Correct target answer reached with exact formulation.'
+            : finalScore > 0
+            ? 'Approached the correct target answer with minor discrepancy.'
+            : 'Final answer incorrect or uncalculated.',
         },
       ],
-      overallFeedback: isClose
+      overallFeedback: totalScore >= 3.0
         ? 'Great mathematical comprehension! The conceptual formulation and algebraic progression were thoroughly executed.'
-        : 'Good initial start. Be sure to write out each intermediate expansion and verify signs before submitting.',
-      correctedSolutionLatex: correctAnswer,
+        : totalScore >= 1.5
+        ? 'Partial credit awarded. Make sure to clearly write each intermediate step and verify the final value.'
+        : 'Incomplete or unverified response. Show all mathematical setup, intermediate substitutions, and calculations to earn credit.',
+      correctedSolutionLatex: correctAnswer || '32/3',
     };
 
     return NextResponse.json({ success: true, result });

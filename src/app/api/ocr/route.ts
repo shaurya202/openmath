@@ -25,19 +25,23 @@ export async function POST(req: NextRequest) {
 
     const provider = getActiveMathProvider();
 
-    // If Gemini or OpenAI is available, ask for direct transcription
-    if (provider.name.includes('Gemini') || provider.name.includes('OpenAI')) {
-      const solution = await provider.solve({
-        query: 'Transcribe this math problem into exact LaTeX. Do not solve yet, just transcribe.',
-        imageBase64,
-        imageMimeType,
-      });
+    // If multimodal provider (Ollama, Gemini, OpenAI) is available, request transcription
+    if (provider.isAvailable() && !provider.name.includes('Offline')) {
+      try {
+        const solution = await provider.solve({
+          query: 'Transcribe this math problem into exact LaTeX. Do not solve yet, just transcribe.',
+          imageBase64,
+          imageMimeType,
+        });
 
-      return NextResponse.json({
-        success: true,
-        transcription: solution.interpretation || 'Transcribed Math Problem',
-        latex: solution.boxedAnswer || '',
-      });
+        return NextResponse.json({
+          success: true,
+          transcription: solution.interpretation || 'Transcribed Math Problem',
+          latex: solution.boxedAnswer || '',
+        });
+      } catch (e) {
+        console.warn('Multimodal OCR transcription failed, using fallback:', e);
+      }
     }
 
     // Offline heuristic transcription

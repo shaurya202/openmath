@@ -304,7 +304,7 @@ export const INITIAL_EXAM_QUESTIONS: ExamQuestion[] = [
     id: 'eq-1',
     subject: 'calculus',
     type: 'multiple_choice',
-    question: 'What is the derivative of f(x) = \\ln(x^3 + 1)?',
+    question: 'What is the derivative of $f(x) = \\ln(x^3 + 1)$?',
     latex: 'f(x) = \\ln(x^3 + 1)',
     options: [
       '\\frac{3x^2}{x^3 + 1}',
@@ -320,7 +320,7 @@ export const INITIAL_EXAM_QUESTIONS: ExamQuestion[] = [
     id: 'eq-2',
     subject: 'algebra',
     type: 'multiple_choice',
-    question: 'Solve for x: \\log_2(x - 1) = 3',
+    question: 'Solve for $x$: $\\log_2(x - 1) = 3$',
     latex: '\\log_2(x - 1) = 3',
     options: ['x = 7', 'x = 8', 'x = 9', 'x = 10'],
     correctOptionIndex: 2,
@@ -331,7 +331,7 @@ export const INITIAL_EXAM_QUESTIONS: ExamQuestion[] = [
     id: 'eq-3',
     subject: 'calculus',
     type: 'free_response',
-    question: 'Find the area of the region bounded by y = x^2 and y = 4.',
+    question: 'Find the area of the region bounded by $y = x^2$ and $y = 4$.',
     latex: 'y = x^2, \\quad y = 4',
     rubricCriteria: [
       'Intersection points: x = -2 and x = 2 (1 pt)',

@@ -49,8 +49,13 @@ export const PracticeExam: React.FC = () => {
           score += 1;
         }
       } else {
-        // Free response: give point if attempted
-        if (selectedAnswers[q.id] && String(selectedAnswers[q.id]).length > 2) {
+        // Free response: check if student derivation contains target value
+        const ans = String(selectedAnswers[q.id] || '').trim().toLowerCase();
+        const isCorrect =
+          ans.includes('32/3') ||
+          ans.includes('10.67') ||
+          (q.correctAnswerLatex && ans.includes(q.correctAnswerLatex.toLowerCase().replace(/\\text\{.*?\}|\s+/g, '')));
+        if (isCorrect) {
           score += 1;
         }
       }

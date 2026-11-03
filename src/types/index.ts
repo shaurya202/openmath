@@ -27,13 +27,44 @@ export type MathSolution = {
   timestamp: number;
 };
 
+export type InlinePracticeQuestion = {
+  id: string;
+  question: string;
+  latex?: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+  selectedOptionIndex?: number;
+  isAnswered?: boolean;
+  showSteps?: boolean;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   solution?: MathSolution;
+  practiceQuestion?: InlinePracticeQuestion;
   imageUrl?: string;
   timestamp: number;
+};
+
+export type ChatSession = {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ArtifactType = 'practice_test' | 'study_sheet' | 'ap_unit' | 'video_explainer';
+
+export type ArtifactData = {
+  id: string;
+  type: ArtifactType;
+  title: string;
+  subtitle?: string;
+  data: any;
 };
 
 export type Flashcard = {

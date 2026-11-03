@@ -21,8 +21,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const [isDragging, setIsDragging] = useState(false);
 
   const processFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (PNG, JPG, or WebP).');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
+
+    if (!isImage && !isPdf) {
+      alert('Please select an image or PDF worksheet (PNG, JPG, WebP, or PDF).');
       return;
     }
 
@@ -30,11 +33,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     reader.onload = (e) => {
       const result = e.target?.result as string;
       if (result) {
-        // Strip data:image/...;base64, header to get pure base64
         const parts = result.split(',');
-        const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const mime = isPdf ? 'application/pdf' : (parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg');
         const base64 = parts[1];
-        onImageSelected(base64, mime, result);
+        onImageSelected(base64, mime, isPdf ? '/pdf-preview-icon.png' : result);
       }
     };
     reader.readAsDataURL(file);
@@ -69,7 +71,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf,.pdf"
             className="hidden"
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
@@ -83,10 +85,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                Drag & drop homework photo or click to upload
+                Drag and drop an image or PDF
               </p>
               <p className="text-[11px] text-gray-500 dark:text-dark-muted mt-0.5">
-                Supports handwriting, graphs, and textbook problems (PNG, JPG, WebP)
+                Accepts PNG, JPG, WebP, and PDF up to 20MB
               </p>
             </div>
           </div>
@@ -96,15 +98,15 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <div className="flex items-center space-x-3">
             <img
               src={selectedPreviewUrl}
-              alt="Homework Upload"
+              alt="Attached document"
               className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-dark-border"
             />
             <div>
               <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center">
-                <Sparkles className="w-3 h-3 mr-1" /> Image attached for OCR
+                File attached
               </span>
               <p className="text-[11px] text-gray-500 dark:text-dark-muted mt-0.5">
-                Ready to transcribe and solve step-by-step
+                Ready for solution
               </p>
             </div>
           </div>

@@ -8,6 +8,7 @@ import {
   LineChart,
   BookOpen,
   CheckCircle,
+  GraduationCap,
   Moon,
   Sun,
   Github,
@@ -42,9 +43,10 @@ export const Navbar: React.FC = () => {
   };
 
   const navItems = [
-    { name: 'AI Solver', href: '/', icon: Pi },
+    { name: 'Solver', href: '/', icon: Pi },
     { name: 'Grapher', href: '/grapher', icon: LineChart },
     { name: 'Study Suite', href: '/study', icon: BookOpen },
+    { name: 'AP Exam Hub', href: '/ap-exams', icon: GraduationCap },
     { name: 'FRQ Grader', href: '/grader', icon: CheckCircle },
   ];
 
@@ -58,19 +60,14 @@ export const Navbar: React.FC = () => {
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
                 <span className="font-bold text-lg leading-none">Ω</span>
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
-                  Open<span className="text-brand-500">Math</span>
-                </span>
-                <span className="text-[10px] text-gray-500 dark:text-dark-muted font-mono leading-none">
-                  AI Math & STEM Engine
-                </span>
-              </div>
+              <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
+                OpenMath
+              </span>
             </Link>
 
-            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 shadow-2xs">
-              <Cpu className="w-3 h-3 mr-1 text-purple-500" />
-              Ollama: gemma4:31b-cloud
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-gray-100 text-gray-700 dark:bg-dark-surface dark:text-gray-300 border border-gray-200 dark:border-dark-border">
+              <Cpu className="w-3 h-3 mr-1 text-brand-500" />
+              gemma4:31b
             </span>
           </div>
 
@@ -110,6 +107,7 @@ export const Navbar: React.FC = () => {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="OpenMath on GitHub"
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-dark-border text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors"
             >
               <Github className="w-3.5 h-3.5" />

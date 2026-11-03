@@ -22,7 +22,7 @@ export default function StudyPage() {
             }`}
           >
             <Brain className="w-4 h-4" />
-            <span>Spaced Repetition Flashcards</span>
+            <span>Flashcards</span>
           </button>
 
           <button
@@ -34,7 +34,7 @@ export default function StudyPage() {
             }`}
           >
             <Award className="w-4 h-4" />
-            <span>Practice Diagnostic Exam</span>
+            <span>Practice exam</span>
           </button>
         </div>
       </div>

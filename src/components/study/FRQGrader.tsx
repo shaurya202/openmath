@@ -49,23 +49,24 @@ export const FRQGrader: React.FC = () => {
       <div className="text-center space-y-1">
         <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 text-xs font-semibold">
           <FileCheck className="w-3.5 h-3.5" />
-          <span>Rubric-Based AI Grading</span>
+          <span>Rubric Evaluation</span>
         </div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Free Response & Homework Auto-Grader
+          Free-Response Question Grader
         </h2>
         <p className="text-xs text-gray-500 dark:text-dark-muted max-w-md mx-auto">
-          Evaluates conceptual setup, intermediate calculus/algebraic steps, units, and boxed answer against official AP-style rubrics.
+          Scores mathematical derivations against step-by-step rubrics.
         </p>
       </div>
 
       {/* Input Form */}
       <form onSubmit={handleGrade} className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 shadow-sm space-y-4">
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-dark-muted">
-            Question / Problem Statement
+          <label htmlFor="frq-question-input" className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            Problem statement
           </label>
           <input
+            id="frq-question-input"
             type="text"
             required
             value={question}
@@ -75,10 +76,11 @@ export const FRQGrader: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-dark-muted">
-            Student Solution / Derivation to Grade
+          <label htmlFor="frq-student-work" className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            Solution to evaluate
           </label>
           <textarea
+            id="frq-student-work"
             required
             rows={5}
             value={studentWork}
@@ -122,14 +124,14 @@ export const FRQGrader: React.FC = () => {
                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                 : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
             }`}>
-              {result.percentage >= 80 ? 'Mastery Achieved' : 'Needs Practice'}
+              {result.percentage >= 80 ? 'Passing' : 'Needs review'}
             </div>
           </div>
 
           {/* Rubric Breakdown Grid */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-dark-muted">
-              4-Point Rubric Criterion Breakdown
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+              Rubric criterion breakdown
             </h4>
             <div className="space-y-2">
               {result.rubricBreakdown.map((item, idx) => (

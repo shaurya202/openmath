@@ -3,13 +3,12 @@ import './globals.css';
 import { Navbar } from '@/components/ui/Navbar';
 
 export const metadata: Metadata = {
-  title: 'OpenMath - AI Math Solver, Homework Helper & Graphing Calculator',
+  title: 'OpenMath — Mathematical Computing Engine & Grapher',
   description:
-    'Free and open-source AI math homework assistant with step-by-step solutions, interactive formula keyboard, multimodal photo OCR, and 2D coordinate grapher.',
+    'Open-source math solver with step-by-step derivations, coordinate graphing, and AP exam practice.',
   keywords: [
-    'open-source math solver',
-    'math gpt',
-    'ai homework helper',
+    'math solver',
+    'step-by-step math',
     'latex calculator',
     'graphing calculator',
     'calculus solver',
