@@ -243,13 +243,22 @@ export default function Home() {
         };
         setMessages((prev) => [...prev, assistantMsg]);
       } else {
-        throw new Error(data.error || 'Failed to solve');
+        const errorMsg: ChatMessage = {
+          id: `assistant-err-${Date.now()}`,
+          role: 'assistant',
+          content: data.error || 'Failed to solve.',
+          topUpUrl: data.topUpUrl,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
       }
     } catch (err: any) {
+      const topUpMatch = err.message?.match(/https?:\/\/[^\s]+/);
       const errorMsg: ChatMessage = {
         id: `assistant-err-${Date.now()}`,
         role: 'assistant',
         content: `Error: ${err.message}.`,
+        topUpUrl: topUpMatch ? topUpMatch[0] : undefined,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -698,7 +707,7 @@ export default function Home() {
         isOpen={showCalculator}
         onClose={() => setShowCalculator(false)}
         onInsertToInput={(val) => {
-          handleInsertMath(val);
+          handleInsertFormula(val);
           setShowCalculator(false);
         }}
       />

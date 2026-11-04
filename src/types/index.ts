@@ -47,6 +47,7 @@ export type ChatMessage = {
   practiceQuestion?: InlinePracticeQuestion;
   imageUrl?: string;
   timestamp: number;
+  topUpUrl?: string;
 };
 
 export type ChatSession = {

@@ -65,9 +65,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('API /api/solve error:', error);
+    const topUpMatch = error.message?.match(/https?:\/\/[^\s]+/);
+    const is402 = error.status === 402 || error.message?.includes('402') || error.message?.includes('balance exhausted');
     return NextResponse.json(
-      { error: error.message || 'Internal solver error' },
-      { status: 500 }
+      {
+        error: error.message || 'Internal solver error',
+        topUpUrl: topUpMatch ? topUpMatch[0] : undefined,
+      },
+      { status: is402 ? 402 : 500 }
     );
   }
 }

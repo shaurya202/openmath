@@ -419,6 +419,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         ) : (
           <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-4 shadow-sm text-sm text-gray-800 dark:text-gray-200">
             <MathView content={message.content} />
+            {message.topUpUrl && (
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-dark-border flex items-center justify-between">
+                <span className="text-xs text-gray-500">Need more balance?</span>
+                <a
+                  href={message.topUpUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                >
+                  Top Up publik Balance
+                </a>
+              </div>
+            )}
           </div>
         )}
       </div>
