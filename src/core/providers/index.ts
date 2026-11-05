@@ -1,12 +1,10 @@
 import { IMathProvider } from './types';
-import { OfflineMathProvider } from './offlineProvider';
 import { GeminiProvider } from './geminiProvider';
 import { OpenAIProvider } from './openaiProvider';
 import { OllamaProvider } from './ollamaProvider';
 import { PublikProvider } from './publik';
 
 export * from './types';
-export { OfflineMathProvider } from './offlineProvider';
 export { GeminiProvider } from './geminiProvider';
 export { OpenAIProvider } from './openaiProvider';
 export { OllamaProvider } from './ollamaProvider';
@@ -36,12 +34,6 @@ export function getActiveMathProvider(): IMathProvider {
     return openai;
   }
 
-  // 2. publik API if available (app token or stored install credentials)
-  const publik = new PublikProvider();
-  if (publik.isAvailable() || process.env.PROVIDER === 'publik') {
-    return publik;
-  }
-
-  // 3. Fallback to local Ollama or offline
-  return new OllamaProvider('gemma4:31b-cloud');
+  // 2. Primary provider: publik API
+  return new PublikProvider();
 }

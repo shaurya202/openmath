@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
 
     const provider = getActiveMathProvider();
 
-    // Use active AI provider if available (Ollama, Gemini, OpenAI)
-    if (provider.isAvailable() && !provider.name.includes('Offline')) {
+    // Use active AI provider if available (publik, Ollama, Gemini, OpenAI)
+    if (provider.isAvailable()) {
       try {
         const prompt = `Grade the following student math response against the rubric.
 Question: ${question}

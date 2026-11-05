@@ -25,32 +25,32 @@ export async function POST(req: NextRequest) {
 
     const provider = getActiveMathProvider();
 
-    // If multimodal provider (Ollama, Gemini, OpenAI) is available, request transcription
-    if (provider.isAvailable() && !provider.name.includes('Offline')) {
-      try {
-        const solution = await provider.solve({
-          query: 'Transcribe this math problem into exact LaTeX. Do not solve yet, just transcribe.',
-          imageBase64,
-          imageMimeType,
-        });
-
-        return NextResponse.json({
-          success: true,
-          transcription: solution.interpretation || 'Transcribed Math Problem',
-          latex: solution.boxedAnswer || '',
-        });
-      } catch (e) {
-        console.warn('Multimodal OCR transcription failed, using fallback:', e);
-      }
+    if (!provider.isAvailable()) {
+      return NextResponse.json(
+        { error: 'No active AI provider available. Please connect publik API or configure an API key.' },
+        { status: 503 }
+      );
     }
 
-    // Offline heuristic transcription
-    return NextResponse.json({
-      success: true,
-      transcription: 'Quadratic Equation: 2x^2 + 5x - 3 = 0',
-      latex: '2x^2 + 5x - 3 = 0',
-      note: 'Processed via OpenMath Offline OCR demo engine',
-    });
+    try {
+      const solution = await provider.solve({
+        query: 'Transcribe this math problem into exact LaTeX. Do not solve yet, just transcribe.',
+        imageBase64,
+        imageMimeType,
+      });
+
+      return NextResponse.json({
+        success: true,
+        transcription: solution.interpretation || 'Transcribed Math Problem',
+        latex: solution.boxedAnswer || '',
+      });
+    } catch (e: any) {
+      console.error('Multimodal OCR transcription failed:', e);
+      return NextResponse.json(
+        { error: e.message || 'Failed to transcribe math image with AI provider.' },
+        { status: 502 }
+      );
+    }
   } catch (err: any) {
     console.error('API /api/ocr error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
