@@ -18,12 +18,11 @@ Format as JSON:
   "suggestedFollowUps": ["Follow-up question"]
 }`;
 
-export const DEFAULT_NIM_MODEL = 'meta/llama-3.1-70b-instruct';
+export const DEFAULT_NIM_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct';
 export const FALLBACK_NIM_MODELS = [
-  'meta/llama-3.1-70b-instruct',
-  'meta/llama-3.1-8b-instruct',
-  'deepseek-ai/deepseek-r1',
   'nvidia/llama-3.1-nemotron-70b-instruct',
+  'deepseek-ai/deepseek-v4.1-flash',
+  'mistralai/mistral-large-2-instruct',
 ];
 
 export class NvidiaNimProvider implements IMathProvider {
@@ -83,9 +82,7 @@ export class NvidiaNimProvider implements IMathProvider {
     const modelsToTry = [
       ...new Set([
         ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        DEFAULT_NIM_MODEL,
-        'deepseek-ai/deepseek-r1',
-        'meta/llama-3.1-8b-instruct',
+        ...FALLBACK_NIM_MODELS,
       ]),
     ].slice(0, 3);
     let lastError = '';
@@ -176,9 +173,7 @@ export class NvidiaNimProvider implements IMathProvider {
     const modelsToTry = [
       ...new Set([
         ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        DEFAULT_NIM_MODEL,
-        'deepseek-ai/deepseek-r1',
-        'meta/llama-3.1-8b-instruct',
+        ...FALLBACK_NIM_MODELS,
       ]),
     ].slice(0, 3);
     let activeRes: Response | null = null;
