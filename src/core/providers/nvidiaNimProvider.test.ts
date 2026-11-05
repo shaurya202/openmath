@@ -11,7 +11,7 @@ describe('NvidiaNimProvider', () => {
   it('reports available when valid apiKey provided', () => {
     const provider = new NvidiaNimProvider('nvapi-test-key-12345678');
     expect(provider.isAvailable()).toBe(true);
-    expect(provider.name).toContain('meta/llama-3.3-70b-instruct');
+    expect(provider.name).toContain('meta/llama-3.1-70b-instruct');
   });
 
   it('allows custom model selection', () => {
