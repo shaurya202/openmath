@@ -4,7 +4,7 @@
 // DISCLOSURE) > the user's own key again if provisioning fails.
 import { randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { arch, homedir, hostname, platform } from "node:os";
+import { arch, homedir, hostname, platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { IMathProvider, ProviderSolveRequest } from "./types";
@@ -62,30 +62,69 @@ export function appToken(): string {
 /** ~/Library/Application Support/publik/apps/<slug>.json, %LOCALAPPDATA%\publik\apps\<slug>.json, ~/.config/publik/apps/<slug>.json */
 export function credentialPath(): string {
   const os = platform();
-  const base =
-    os === "darwin" ? join(homedir(), "Library", "Application Support")
-    : os === "win32" ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"))
-    : (process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"));
+  let base: string;
+  if (os === "darwin") {
+    base = join(homedir(), "Library", "Application Support");
+  } else if (os === "win32") {
+    base = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
+  } else {
+    // Linux / Serverless environments (e.g. Vercel, AWS Lambda)
+    if (process.env.XDG_CONFIG_HOME) {
+      base = process.env.XDG_CONFIG_HOME;
+    } else if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      base = join(tmpdir(), ".config");
+    } else {
+      try {
+        const home = homedir();
+        base = existsSync(home) ? join(home, ".config") : join(tmpdir(), ".config");
+      } catch {
+        base = join(tmpdir(), ".config");
+      }
+    }
+  }
   return join(base, "publik", "apps", `${APP_SLUG}.json`);
 }
 
 export function readCredential(): PublikCredential | null {
-  try {
-    const c = JSON.parse(readFileSync(credentialPath(), "utf8")) as PublikCredential;
-    return typeof c.key === "string" && c.key.startsWith("pk_") ? c : null;
-  } catch {
-    return null;
+  const tryRead = (filePath: string) => {
+    try {
+      const c = JSON.parse(readFileSync(filePath, "utf8")) as PublikCredential;
+      return typeof c.key === "string" && c.key.startsWith("pk_") ? c : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const primary = tryRead(credentialPath());
+  if (primary) return primary;
+
+  // Fallback to /tmp in serverless or constrained environments
+  const fallbackPath = join(tmpdir(), ".config", "publik", "apps", `${APP_SLUG}.json`);
+  if (fallbackPath !== credentialPath()) {
+    return tryRead(fallbackPath);
   }
+  return null;
 }
 
 export function writeCredential(c: PublikCredential): void {
   const file = credentialPath();
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(c, null, 2), { mode: 0o600 });
   try {
-    chmodSync(file, 0o600);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(c, null, 2), { mode: 0o600 });
+    try {
+      chmodSync(file, 0o600);
+    } catch {
+      // Windows / restricted fs chmod may be a no-op or throw
+    }
   } catch {
-    // Windows chmod may be a no-op or throw for some attributes
+    // If standard path is not writable (e.g. Vercel serverless sandbox), fallback to tmpdir
+    try {
+      const fallbackPath = join(tmpdir(), ".config", "publik", "apps", `${APP_SLUG}.json`);
+      mkdirSync(dirname(fallbackPath), { recursive: true });
+      writeFileSync(fallbackPath, JSON.stringify(c, null, 2), { mode: 0o600 });
+    } catch {
+      // In worst-case read-only environments, avoid unhandled ENOENT/EACCES
+    }
   }
 }
 

@@ -13,8 +13,8 @@ export { PublikProvider } from './publik';
 export { NvidiaNimProvider } from './nvidiaNimProvider';
 
 export function getActiveMathProvider(): IMathProvider {
-  // 1. Primary: NVIDIA NIM if NVIDIA_NIM_API_KEY is configured (default for Vercel)
-  if (process.env.NVIDIA_NIM_API_KEY || process.env.PROVIDER === 'nvidia' || process.env.PROVIDER === 'nim') {
+  // 1. Primary: NVIDIA NIM if NVIDIA_NIM_API_KEY / NVIDIA_API_KEY is configured (default for Vercel)
+  if (process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.PROVIDER === 'nvidia' || process.env.PROVIDER === 'nim') {
     const nim = new NvidiaNimProvider();
     if (nim.isAvailable()) return nim;
   }
