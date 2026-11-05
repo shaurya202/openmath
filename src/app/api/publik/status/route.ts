@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getActiveMathProvider } from '@/core/providers';
 import {
   readCredential,
   resolveProvider,
@@ -18,12 +19,14 @@ export async function GET() {
     const cred = readCredential();
     const token = appToken();
     const provider = resolveProvider();
+    const activeProvider = getActiveMathProvider();
 
     return NextResponse.json({
       slug: APP_SLUG,
       version: APP_VERSION,
       hasAppToken: Boolean(token && token.startsWith('pat_')),
       providerKind: provider.kind,
+      activeProvider: activeProvider.name,
       credential: cred
         ? {
             install_id: cred.install_id,
