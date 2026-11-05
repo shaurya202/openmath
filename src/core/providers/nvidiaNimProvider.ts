@@ -18,10 +18,10 @@ Format as JSON:
   "suggestedFollowUps": ["Follow-up question"]
 }`;
 
-export const DEFAULT_NIM_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct';
+export const DEFAULT_NIM_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
 export const FALLBACK_NIM_MODELS = [
-  'nvidia/llama-3.1-nemotron-70b-instruct',
   'deepseek-ai/deepseek-v4.1-flash',
+  'nvidia/llama-3.1-nemotron-70b-instruct',
   'mistralai/mistral-large-2-instruct',
 ];
 
@@ -97,7 +97,6 @@ export class NvidiaNimProvider implements IMathProvider {
         body: JSON.stringify({
           model: currentModel,
           messages,
-          response_format: currentModel.includes('deepseek') ? undefined : { type: 'json_object' },
           temperature: 0.2,
           max_tokens: 2048,
         }),
@@ -118,8 +117,19 @@ export class NvidiaNimProvider implements IMathProvider {
       const data = await res.json();
       const content = data.choices?.[0]?.message?.content || '{}';
 
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.slice(7);
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.slice(3);
+      }
+      if (cleanContent.endsWith('```')) {
+        cleanContent = cleanContent.slice(0, -3);
+      }
+      cleanContent = cleanContent.trim();
+
       try {
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(cleanContent);
         return {
           id: `nim-${Date.now()}`,
           query: request.query,
