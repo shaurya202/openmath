@@ -67,7 +67,27 @@ export class NvidiaNimProvider implements IMathProvider {
       messages.push({ role: 'user', content: request.query });
     }
 
-    const modelsToTry = [...new Set([this.model, ...FALLBACK_NIM_MODELS])];
+    let availableModels: string[] = [];
+    try {
+      const modelsRes = await fetch(`${this.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json();
+        availableModels = (modelsData.data || []).map((m: any) => m.id);
+      }
+    } catch {
+      // ignore /models fetch failure
+    }
+
+    const modelsToTry = [
+      ...new Set([
+        ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+        ...availableModels.filter(m => m.includes('llama') || m.includes('instruct') || m.includes('r1') || m.includes('deepseek') || m.includes('qwen')),
+        ...FALLBACK_NIM_MODELS,
+        ...availableModels,
+      ]),
+    ];
     let lastError = '';
 
     for (const currentModel of modelsToTry) {
@@ -129,7 +149,7 @@ export class NvidiaNimProvider implements IMathProvider {
       }
     }
 
-    throw new Error(`NVIDIA NIM API error: All candidate models retired or unavailable. Last error: ${lastError}`);
+    throw new Error(`NVIDIA NIM API error: All candidate models unavailable. (Available on key: ${availableModels.slice(0, 10).join(', ') || 'none'}). Last error: ${lastError}`);
   }
 
   async *solveStream(request: ProviderSolveRequest): AsyncIterable<string> {
@@ -140,7 +160,27 @@ export class NvidiaNimProvider implements IMathProvider {
     const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
     messages.push({ role: 'user', content: request.query });
 
-    const modelsToTry = [...new Set([this.model, ...FALLBACK_NIM_MODELS])];
+    let availableModels: string[] = [];
+    try {
+      const modelsRes = await fetch(`${this.baseURL}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json();
+        availableModels = (modelsData.data || []).map((m: any) => m.id);
+      }
+    } catch {
+      // ignore
+    }
+
+    const modelsToTry = [
+      ...new Set([
+        ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+        ...availableModels.filter(m => m.includes('llama') || m.includes('instruct') || m.includes('r1') || m.includes('deepseek') || m.includes('qwen')),
+        ...FALLBACK_NIM_MODELS,
+        ...availableModels,
+      ]),
+    ];
     let activeRes: Response | null = null;
 
     for (const currentModel of modelsToTry) {
