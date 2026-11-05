@@ -83,11 +83,11 @@ export class NvidiaNimProvider implements IMathProvider {
     const modelsToTry = [
       ...new Set([
         ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        ...availableModels.filter(m => m.includes('llama') || m.includes('instruct') || m.includes('r1') || m.includes('deepseek') || m.includes('qwen')),
-        ...FALLBACK_NIM_MODELS,
-        ...availableModels,
+        DEFAULT_NIM_MODEL,
+        'deepseek-ai/deepseek-r1',
+        'meta/llama-3.1-8b-instruct',
       ]),
-    ];
+    ].slice(0, 3);
     let lastError = '';
 
     for (const currentModel of modelsToTry) {
@@ -176,11 +176,11 @@ export class NvidiaNimProvider implements IMathProvider {
     const modelsToTry = [
       ...new Set([
         ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        ...availableModels.filter(m => m.includes('llama') || m.includes('instruct') || m.includes('r1') || m.includes('deepseek') || m.includes('qwen')),
-        ...FALLBACK_NIM_MODELS,
-        ...availableModels,
+        DEFAULT_NIM_MODEL,
+        'deepseek-ai/deepseek-r1',
+        'meta/llama-3.1-8b-instruct',
       ]),
-    ];
+    ].slice(0, 3);
     let activeRes: Response | null = null;
 
     for (const currentModel of modelsToTry) {

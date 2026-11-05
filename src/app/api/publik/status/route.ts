@@ -21,12 +21,27 @@ export async function GET() {
     const provider = resolveProvider();
     const activeProvider = getActiveMathProvider();
 
+    let nimModels: string[] = [];
+    if (process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY) {
+      try {
+        const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+          headers: { Authorization: `Bearer ${process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          nimModels = (data.data || []).map((m: any) => m.id);
+        }
+      } catch {}
+    }
+
     return NextResponse.json({
       slug: APP_SLUG,
       version: APP_VERSION,
       hasAppToken: Boolean(token && token.startsWith('pat_')),
       providerKind: provider.kind,
       activeProvider: activeProvider.name,
+      nimModelsCount: nimModels.length,
+      sampleNimModels: nimModels.slice(0, 15),
       credential: cred
         ? {
             install_id: cred.install_id,
