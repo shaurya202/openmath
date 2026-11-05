@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
         imageMimeType,
       });
     } catch (primaryErr: any) {
+      console.warn('Primary provider (NIM) failed, falling back to publik:', primaryErr.message || primaryErr);
       if (!provider.name.includes('publik')) {
         const { PublikProvider } = await import('@/core/providers/publik');
         const fallback = new PublikProvider();
