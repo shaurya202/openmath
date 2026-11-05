@@ -88,71 +88,77 @@ export class NvidiaNimProvider implements IMathProvider {
     let lastError = '';
 
     for (const currentModel of modelsToTry) {
-      const res = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: currentModel,
-          messages,
-          temperature: 0.2,
-          max_tokens: 2048,
-        }),
-      });
-
-      if (!res.ok) {
-        lastError = await res.text();
-        // If 404/410, model is retired or unavailable, try next candidate
-        if (res.status === 404 || res.status === 410) {
-          continue;
-        }
-        throw new Error(`NVIDIA NIM API error (${res.status}): ${lastError}`);
-      }
-
-      this.model = currentModel;
-      this.name = `NVIDIA NIM (${currentModel})`;
-
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content || '{}';
-
-      let cleanContent = content.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.slice(7);
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.slice(3);
-      }
-      if (cleanContent.endsWith('```')) {
-        cleanContent = cleanContent.slice(0, -3);
-      }
-      cleanContent = cleanContent.trim();
-
       try {
-        const parsed = JSON.parse(cleanContent);
-        return {
-          id: `nim-${Date.now()}`,
-          query: request.query,
-          interpretation: parsed.interpretation || request.query,
-          steps: parsed.steps || [],
-          boxedAnswer: parsed.boxedAnswer || 'N/A',
-          graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-          suggestedFollowUps: parsed.suggestedFollowUps || [],
-          confidence: 0.99,
-          timestamp: Date.now(),
-        };
-      } catch {
-        return {
-          id: `nim-raw-${Date.now()}`,
-          query: request.query,
-          interpretation: request.query,
-          steps: [{ stepNumber: 1, title: 'Solution', explanation: content }],
-          boxedAnswer: 'N/A',
-          graphableFunctions: extractGraphableFunctions(content),
-          suggestedFollowUps: [],
-          confidence: 0.95,
-          timestamp: Date.now(),
-        };
+        const res = await fetch(`${this.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: currentModel,
+            messages,
+            temperature: 0.2,
+            max_tokens: 2048,
+          }),
+          signal: AbortSignal.timeout(12000),
+        });
+
+        if (!res.ok) {
+          lastError = await res.text();
+          // If 404/410, model is retired or unavailable, try next candidate
+          if (res.status === 404 || res.status === 410) {
+            continue;
+          }
+          throw new Error(`NVIDIA NIM API error (${res.status}): ${lastError}`);
+        }
+
+        this.model = currentModel;
+        this.name = `NVIDIA NIM (${currentModel})`;
+
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content || '{}';
+
+        let cleanContent = content.trim();
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.slice(7);
+        } else if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.slice(3);
+        }
+        if (cleanContent.endsWith('```')) {
+          cleanContent = cleanContent.slice(0, -3);
+        }
+        cleanContent = cleanContent.trim();
+
+        try {
+          const parsed = JSON.parse(cleanContent);
+          return {
+            id: `nim-${Date.now()}`,
+            query: request.query,
+            interpretation: parsed.interpretation || request.query,
+            steps: parsed.steps || [],
+            boxedAnswer: parsed.boxedAnswer || 'N/A',
+            graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
+            suggestedFollowUps: parsed.suggestedFollowUps || [],
+            confidence: 0.99,
+            timestamp: Date.now(),
+          };
+        } catch {
+          return {
+            id: `nim-raw-${Date.now()}`,
+            query: request.query,
+            interpretation: request.query,
+            steps: [{ stepNumber: 1, title: 'Solution', explanation: content }],
+            boxedAnswer: 'N/A',
+            graphableFunctions: extractGraphableFunctions(content),
+            suggestedFollowUps: [],
+            confidence: 0.95,
+            timestamp: Date.now(),
+          };
+        }
+      } catch (err: any) {
+        lastError = err.message || String(err);
+        continue;
       }
     }
 

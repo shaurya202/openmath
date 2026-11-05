@@ -51,16 +51,37 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Standard JSON response
-    const solution = await provider.solve({
-      query: query || '',
-      imageBase64,
-      imageMimeType,
-    });
+    // Standard JSON response with automatic fallback if primary provider fails
+    let solution;
+    let usedProviderName = provider.name;
+    try {
+      solution = await provider.solve({
+        query: query || '',
+        imageBase64,
+        imageMimeType,
+      });
+    } catch (primaryErr: any) {
+      if (!provider.name.includes('publik')) {
+        const { PublikProvider } = await import('@/core/providers/publik');
+        const fallback = new PublikProvider();
+        if (fallback.isAvailable()) {
+          solution = await fallback.solve({
+            query: query || '',
+            imageBase64,
+            imageMimeType,
+          });
+          usedProviderName = fallback.name;
+        } else {
+          throw primaryErr;
+        }
+      } else {
+        throw primaryErr;
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      provider: provider.name,
+      provider: usedProviderName,
       solution,
     });
   } catch (error: any) {
