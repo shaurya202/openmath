@@ -41,7 +41,7 @@ export async function GET() {
       providerKind: provider.kind,
       activeProvider: activeProvider.name,
       nimModelsCount: nimModels.length,
-      sampleNimModels: nimModels.slice(0, 15),
+      sampleNimModels: nimModels.filter(m => m.includes('llama') || m.includes('deepseek') || m.includes('qwen') || m.includes('mistral') || m.includes('nemotron')),
       credential: cred
         ? {
             install_id: cred.install_id,
