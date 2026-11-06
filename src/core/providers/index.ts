@@ -19,12 +19,10 @@ export function getActiveMathProvider(host?: string | null): IMathProvider {
 
   const isPublik = host ? (host.toLowerCase().includes('publik') || !isVercelDomain) : !isVercelDomain;
 
-  // On the Vercel domain, use NVIDIA NIM API (API key is stored in Vercel)
+  // On the Vercel domain, use NVIDIA NIM API only (API key is stored in Vercel).
+  // Never fall back to publik on Vercel.
   if (isVercelDomain && !host?.toLowerCase().includes('publik')) {
-    if (process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.PROVIDER === 'nvidia' || process.env.PROVIDER === 'nim' || !process.env.PROVIDER) {
-      const nim = new NvidiaNimProvider();
-      if (nim.isAvailable()) return nim;
-    }
+    return new NvidiaNimProvider();
   }
 
   // On publik, use the publik API

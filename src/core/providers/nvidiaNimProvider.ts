@@ -18,8 +18,10 @@ Format as JSON:
   "suggestedFollowUps": ["Follow-up question"]
 }`;
 
-export const DEFAULT_NIM_MODEL = 'meta/llama-3.3-70b-instruct';
+export const DEFAULT_NIM_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
 export const FALLBACK_NIM_MODELS = [
+  'deepseek-ai/deepseek-v4.1-flash',
+  'deepseek-ai/deepseek-coder-6.7b-instruct',
   'meta/llama-3.3-70b-instruct',
   'meta/llama-3.1-8b-instruct',
   'meta/llama-3.1-70b-instruct',
@@ -37,7 +39,7 @@ export class NvidiaNimProvider implements IMathProvider {
   private model: string;
 
   constructor(apiKey?: string, baseURL?: string, model?: string) {
-    this.apiKey = apiKey || process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY;
+    this.apiKey = apiKey || process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.NIM_API_KEY || process.env.NVIDIA_KEY || process.env.NIM_KEY;
     this.baseURL = baseURL || process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
     this.model = model || process.env.NVIDIA_NIM_MODEL || DEFAULT_NIM_MODEL;
     this.name = `NVIDIA NIM (${this.model})`;
@@ -92,25 +94,20 @@ export class NvidiaNimProvider implements IMathProvider {
       );
       modelsToTry = [
         ...new Set([
-          ...VISION_NIM_MODELS,
           ...candidateVision,
+          ...VISION_NIM_MODELS,
+          ...availableModels,
         ]),
-      ].slice(0, 3);
+      ].slice(0, 6);
     } else {
-      const candidateInstruct = availableModels.filter(
-        (m) => (m.includes('llama') || m.includes('deepseek') || m.includes('qwen') || m.includes('mistral')) &&
-               (m.includes('instruct') || m.includes('chat') || m.includes('r1'))
-      );
       modelsToTry = [
         ...new Set([
-          ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+          ...(this.model ? [this.model] : []),
+          ...availableModels,
           DEFAULT_NIM_MODEL,
-          'meta/llama-3.1-8b-instruct',
-          'meta/llama-3.1-70b-instruct',
-          ...candidateInstruct,
           ...FALLBACK_NIM_MODELS,
         ]),
-      ].slice(0, 4);
+      ].slice(0, 6);
     }
     let lastError = '';
 
@@ -243,25 +240,20 @@ export class NvidiaNimProvider implements IMathProvider {
       );
       modelsToTry = [
         ...new Set([
-          ...VISION_NIM_MODELS,
           ...candidateVision,
+          ...VISION_NIM_MODELS,
+          ...availableModels,
         ]),
-      ].slice(0, 3);
+      ].slice(0, 6);
     } else {
-      const candidateInstruct = availableModels.filter(
-        (m) => (m.includes('llama') || m.includes('deepseek') || m.includes('qwen') || m.includes('mistral')) &&
-               (m.includes('instruct') || m.includes('chat') || m.includes('r1'))
-      );
       modelsToTry = [
         ...new Set([
-          ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+          ...(this.model ? [this.model] : []),
+          ...availableModels,
           DEFAULT_NIM_MODEL,
-          'meta/llama-3.1-8b-instruct',
-          'meta/llama-3.1-70b-instruct',
-          ...candidateInstruct,
           ...FALLBACK_NIM_MODELS,
         ]),
-      ].slice(0, 4);
+      ].slice(0, 6);
     }
     let activeRes: Response | null = null;
 

@@ -21,12 +21,13 @@ export async function GET(req: NextRequest) {
     const token = appToken();
     const provider = resolveProvider();
     const activeProvider = getActiveMathProvider(host);
+    const providerKind = activeProvider.name.includes('NVIDIA') ? 'nvidia' : provider.kind;
 
     return NextResponse.json({
       slug: APP_SLUG,
       version: APP_VERSION,
       hasAppToken: Boolean(token && token.startsWith('pat_')),
-      providerKind: provider.kind,
+      providerKind,
       activeProvider: activeProvider.name,
       credential: cred
         ? {

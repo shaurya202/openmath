@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
       });
     } catch (primaryErr: any) {
       if (isVercel) {
-        // On the vercel domain, keep NVIDIA NIM as provider and surface actual error
+        // On the vercel domain, keep NVIDIA NIM as provider and surface actual error.
+        // Do not fall back to publik on Vercel.
         throw primaryErr;
       }
       console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
