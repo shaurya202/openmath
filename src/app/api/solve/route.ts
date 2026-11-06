@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const provider = getActiveMathProvider();
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const isVercel = host ? host.toLowerCase().includes('vercel.app') : Boolean(process.env.VERCEL || process.env.VERCEL_URL);
+    const provider = getActiveMathProvider(host);
 
     if (stream) {
       // SSE streaming response
@@ -61,7 +63,11 @@ export async function POST(req: NextRequest) {
         imageMimeType,
       });
     } catch (primaryErr: any) {
-      console.warn('Primary provider (NIM) failed, falling back to publik:', primaryErr.message || primaryErr);
+      if (isVercel) {
+        // On the vercel domain, keep NVIDIA NIM as provider and surface actual error
+        throw primaryErr;
+      }
+      console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
       if (!provider.name.includes('publik')) {
         const { PublikProvider } = await import('@/core/providers/publik');
         const fallback = new PublikProvider();

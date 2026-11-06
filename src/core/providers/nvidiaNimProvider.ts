@@ -18,11 +18,16 @@ Format as JSON:
   "suggestedFollowUps": ["Follow-up question"]
 }`;
 
-export const DEFAULT_NIM_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
+export const DEFAULT_NIM_MODEL = 'meta/llama-3.3-70b-instruct';
 export const FALLBACK_NIM_MODELS = [
-  'deepseek-ai/deepseek-v4.1-flash',
-  'nvidia/llama-3.1-nemotron-70b-instruct',
-  'mistralai/mistral-large-2-instruct',
+  'meta/llama-3.3-70b-instruct',
+  'meta/llama-3.1-8b-instruct',
+  'meta/llama-3.1-70b-instruct',
+  'meta/llama-3.2-3b-instruct',
+];
+export const VISION_NIM_MODELS = [
+  'meta/llama-3.2-11b-vision-instruct',
+  'meta/llama-3.2-90b-vision-instruct',
 ];
 
 export class NvidiaNimProvider implements IMathProvider {
@@ -70,6 +75,7 @@ export class NvidiaNimProvider implements IMathProvider {
     try {
       const modelsRes = await fetch(`${this.baseURL}/models`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
+        signal: AbortSignal.timeout(3000),
       });
       if (modelsRes.ok) {
         const modelsData = await modelsRes.json();
@@ -79,12 +85,33 @@ export class NvidiaNimProvider implements IMathProvider {
       // ignore /models fetch failure
     }
 
-    const modelsToTry = [
-      ...new Set([
-        ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        ...FALLBACK_NIM_MODELS,
-      ]),
-    ].slice(0, 3);
+    let modelsToTry: string[];
+    if (request.imageBase64) {
+      const candidateVision = availableModels.filter(
+        (m) => m.includes('vision') || m.includes('-vl')
+      );
+      modelsToTry = [
+        ...new Set([
+          ...VISION_NIM_MODELS,
+          ...candidateVision,
+        ]),
+      ].slice(0, 3);
+    } else {
+      const candidateInstruct = availableModels.filter(
+        (m) => (m.includes('llama') || m.includes('deepseek') || m.includes('qwen') || m.includes('mistral')) &&
+               (m.includes('instruct') || m.includes('chat') || m.includes('r1'))
+      );
+      modelsToTry = [
+        ...new Set([
+          ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+          DEFAULT_NIM_MODEL,
+          'meta/llama-3.1-8b-instruct',
+          'meta/llama-3.1-70b-instruct',
+          ...candidateInstruct,
+          ...FALLBACK_NIM_MODELS,
+        ]),
+      ].slice(0, 4);
+    }
     let lastError = '';
 
     for (const currentModel of modelsToTry) {
@@ -101,13 +128,13 @@ export class NvidiaNimProvider implements IMathProvider {
             temperature: 0.2,
             max_tokens: 2048,
           }),
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.timeout(8000),
         });
 
         if (!res.ok) {
           lastError = await res.text();
-          // If 404/410, model is retired or unavailable, try next candidate
-          if (res.status === 404 || res.status === 410) {
+          // If 404/410/400 (model retired, not found, or not entitled for account), try next candidate
+          if (res.status === 404 || res.status === 410 || res.status === 400) {
             continue;
           }
           throw new Error(`NVIDIA NIM API error (${res.status}): ${lastError}`);
@@ -119,37 +146,44 @@ export class NvidiaNimProvider implements IMathProvider {
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content || '{}';
 
-        let cleanContent = content.trim();
-        if (cleanContent.startsWith('```json')) {
-          cleanContent = cleanContent.slice(7);
-        } else if (cleanContent.startsWith('```')) {
-          cleanContent = cleanContent.slice(3);
+        let jsonStr = content.trim();
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1].trim();
+        } else {
+          const firstBrace = content.indexOf('{');
+          const lastBrace = content.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace > firstBrace) {
+            jsonStr = content.slice(firstBrace, lastBrace + 1);
+          }
         }
-        if (cleanContent.endsWith('```')) {
-          cleanContent = cleanContent.slice(0, -3);
-        }
-        cleanContent = cleanContent.trim();
+
+        const extractBoxed = (text: string) => {
+          const m = text.match(/\\boxed\{([^}]+)\}/);
+          return m ? m[1] : null;
+        };
 
         try {
-          const parsed = JSON.parse(cleanContent);
+          const parsed = JSON.parse(jsonStr);
           return {
             id: `nim-${Date.now()}`,
             query: request.query,
             interpretation: parsed.interpretation || request.query,
-            steps: parsed.steps || [],
-            boxedAnswer: parsed.boxedAnswer || 'N/A',
+            steps: Array.isArray(parsed.steps) ? parsed.steps : [],
+            boxedAnswer: parsed.boxedAnswer || extractBoxed(content) || 'N/A',
             graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-            suggestedFollowUps: parsed.suggestedFollowUps || [],
+            suggestedFollowUps: Array.isArray(parsed.suggestedFollowUps) ? parsed.suggestedFollowUps : [],
             confidence: 0.99,
             timestamp: Date.now(),
           };
         } catch {
+          const boxed = extractBoxed(content);
           return {
             id: `nim-raw-${Date.now()}`,
             query: request.query,
             interpretation: request.query,
             steps: [{ stepNumber: 1, title: 'Solution', explanation: content }],
-            boxedAnswer: 'N/A',
+            boxedAnswer: boxed || 'N/A',
             graphableFunctions: extractGraphableFunctions(content),
             suggestedFollowUps: [],
             confidence: 0.95,
@@ -171,12 +205,28 @@ export class NvidiaNimProvider implements IMathProvider {
     }
 
     const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
-    messages.push({ role: 'user', content: request.query });
+    if (request.imageBase64 && request.imageMimeType) {
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: request.query || 'Solve the math problem in this image.' },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${request.imageMimeType};base64,${request.imageBase64}`,
+            },
+          },
+        ],
+      });
+    } else {
+      messages.push({ role: 'user', content: request.query });
+    }
 
     let availableModels: string[] = [];
     try {
       const modelsRes = await fetch(`${this.baseURL}/models`, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
+        signal: AbortSignal.timeout(3000),
       });
       if (modelsRes.ok) {
         const modelsData = await modelsRes.json();
@@ -186,41 +236,67 @@ export class NvidiaNimProvider implements IMathProvider {
       // ignore
     }
 
-    const modelsToTry = [
-      ...new Set([
-        ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
-        ...FALLBACK_NIM_MODELS,
-      ]),
-    ].slice(0, 3);
+    let modelsToTry: string[];
+    if (request.imageBase64) {
+      const candidateVision = availableModels.filter(
+        (m) => m.includes('vision') || m.includes('-vl')
+      );
+      modelsToTry = [
+        ...new Set([
+          ...VISION_NIM_MODELS,
+          ...candidateVision,
+        ]),
+      ].slice(0, 3);
+    } else {
+      const candidateInstruct = availableModels.filter(
+        (m) => (m.includes('llama') || m.includes('deepseek') || m.includes('qwen') || m.includes('mistral')) &&
+               (m.includes('instruct') || m.includes('chat') || m.includes('r1'))
+      );
+      modelsToTry = [
+        ...new Set([
+          ...(this.model && this.model !== DEFAULT_NIM_MODEL ? [this.model] : []),
+          DEFAULT_NIM_MODEL,
+          'meta/llama-3.1-8b-instruct',
+          'meta/llama-3.1-70b-instruct',
+          ...candidateInstruct,
+          ...FALLBACK_NIM_MODELS,
+        ]),
+      ].slice(0, 4);
+    }
     let activeRes: Response | null = null;
 
     for (const currentModel of modelsToTry) {
-      const res = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: currentModel,
-          messages,
-          stream: true,
-          temperature: 0.2,
-        }),
-      });
+      try {
+        const res = await fetch(`${this.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: currentModel,
+            messages,
+            stream: true,
+            temperature: 0.2,
+          }),
+          signal: AbortSignal.timeout(8000),
+        });
 
-      if (!res.ok || !res.body) {
-        if (res.status === 404 || res.status === 410) {
-          continue;
+        if (!res.ok || !res.body) {
+          if (res.status === 404 || res.status === 410 || res.status === 400) {
+            continue;
+          }
+          const err = await res.text();
+          throw new Error(`NVIDIA NIM stream error (${res.status}): ${err}`);
         }
-        const err = await res.text();
-        throw new Error(`NVIDIA NIM stream error (${res.status}): ${err}`);
-      }
 
-      this.model = currentModel;
-      this.name = `NVIDIA NIM (${currentModel})`;
-      activeRes = res;
-      break;
+        this.model = currentModel;
+        this.name = `NVIDIA NIM (${currentModel})`;
+        activeRes = res;
+        break;
+      } catch {
+        continue;
+      }
     }
 
     if (!activeRes || !activeRes.body) {

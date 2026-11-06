@@ -14,12 +14,13 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
     const cred = readCredential();
     const token = appToken();
     const provider = resolveProvider();
-    const activeProvider = getActiveMathProvider();
+    const activeProvider = getActiveMathProvider(host);
 
     return NextResponse.json({
       slug: APP_SLUG,

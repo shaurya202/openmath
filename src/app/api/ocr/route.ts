@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const provider = getActiveMathProvider();
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const provider = getActiveMathProvider(host);
 
     if (!provider.isAvailable()) {
       return NextResponse.json(
