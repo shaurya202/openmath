@@ -23,10 +23,12 @@ export class OllamaProvider implements IMathProvider {
   readonly name: string;
   private host: string;
   private model: string;
+  private apiKey: string | undefined;
 
-  constructor(model?: string, host?: string) {
+  constructor(model?: string, host?: string, apiKey?: string) {
     this.model = model || process.env.OLLAMA_MODEL || 'gemma4:31b-cloud';
-    this.host = host || process.env.OLLAMA_HOST || 'http://localhost:11434';
+    this.host = (host || process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/+$/, '');
+    this.apiKey = apiKey || process.env.OLLAMA_API_KEY;
     this.name = `Ollama (${this.model})`;
   }
 
@@ -55,9 +57,11 @@ export class OllamaProvider implements IMathProvider {
       messages.push({ role: 'user', content: request.query });
     }
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
     const res = await fetch(`${this.host}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model: this.model,
         messages,

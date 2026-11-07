@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
         imageMimeType,
       });
     } catch (primaryErr: any) {
-      // shortcut: temporarily allow publik fallback on Vercel while NVIDIA account lacks
-      // 'Public API Endpoints' entitlement; revert to no-fallback once NVIDIA works.
       console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
       if (!provider.name.includes('publik')) {
         const { PublikProvider } = await import('@/core/providers/publik');

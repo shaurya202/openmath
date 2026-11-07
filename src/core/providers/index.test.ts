@@ -12,15 +12,15 @@ describe('getActiveMathProvider domain-based routing', () => {
     process.env = { ...origEnv };
   });
 
-  it('selects NvidiaNimProvider on vercel.app domains when key configured', () => {
-    process.env.NVIDIA_NIM_API_KEY = 'nvapi-mock-test-key-12345678';
+  it('selects GeminiProvider on vercel.app domains when key configured', () => {
+    process.env.GEMINI_API_KEY = 'gemini-mock-test-key-12345678';
     delete process.env.PROVIDER;
     const provider = getActiveMathProvider('openmath-eight.vercel.app');
-    expect(provider.name).toContain('NVIDIA NIM');
+    expect(provider.name).toContain('Gemini');
   });
 
-  it('selects PublikProvider on publik domains even if NVIDIA key exists', () => {
-    process.env.NVIDIA_NIM_API_KEY = 'nvapi-mock-test-key-12345678';
+  it('selects PublikProvider on publik domains even if Gemini key exists', () => {
+    process.env.GEMINI_API_KEY = 'gemini-mock-test-key-12345678';
     delete process.env.PROVIDER;
     const provider = getActiveMathProvider('openmath.publik.app');
     expect(provider.name).toContain('publik API');
