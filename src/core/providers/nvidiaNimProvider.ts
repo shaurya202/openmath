@@ -194,7 +194,8 @@ export class NvidiaNimProvider implements IMathProvider {
       }
     }
 
-    throw new Error(`NVIDIA NIM API error: All candidate models unavailable. (Available on key: ${availableModels.slice(0, 10).join(', ') || 'none'}). Last error: ${lastError}`);
+    const keyHint = this.apiKey ? `${this.apiKey.slice(0, 12)}... (len ${this.apiKey.length})` : 'MISSING';
+    throw new Error(`NVIDIA NIM API error: All candidate models unavailable. (key: ${keyHint}, base: ${this.baseURL}). Last error: ${lastError}`);
   }
 
   async *solveStream(request: ProviderSolveRequest): AsyncIterable<string> {
