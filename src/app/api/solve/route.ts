@@ -63,9 +63,10 @@ export async function POST(req: NextRequest) {
         imageMimeType,
       });
     } catch (primaryErr: any) {
-      if (isVercel) {
-        // On the vercel domain, keep NVIDIA NIM as provider and surface actual error.
-        // Do not fall back to publik on Vercel.
+      const isNvidia = provider.name.includes('NVIDIA');
+      if (isVercel || isNvidia) {
+        // On the vercel domain, or when NIM is the selected provider, do not fall back to publik.
+        // Surface the actual error.
         throw primaryErr;
       }
       console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
