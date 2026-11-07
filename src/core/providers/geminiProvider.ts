@@ -55,10 +55,29 @@ export class GeminiProvider implements IMathProvider {
       parts.push({ text: request.query });
     }
 
-    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    // Discover available models for this key, then try generateContent on each.
+    let candidateModels: string[] = [];
+    try {
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        candidateModels = (listData.models || [])
+          .filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'))
+          .map((m: any) => (m.name || '').replace(/^models\//, ''))
+          .filter(Boolean);
+      }
+    } catch {
+      // ignore; fall back to defaults below
+    }
+    if (candidateModels.length === 0) {
+      candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    }
+
     let res: Response | null = null;
     let lastErr = '';
-    for (const m of models) {
+    for (const m of candidateModels.slice(0, 6)) {
       res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${this.apiKey}`,
         {
