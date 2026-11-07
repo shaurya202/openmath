@@ -55,27 +55,33 @@ export class GeminiProvider implements IMathProvider {
       parts.push({ text: request.query });
     }
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${this.apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini API error (${res.status}): ${err}`);
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let res: Response | null = null;
+    let lastErr = '';
+    for (const m of models) {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            systemInstruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
+            },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          }),
+        }
+      );
+      if (res.ok) break;
+      lastErr = await res.text();
+      res = null;
+    }
+    if (!res) {
+      throw new Error(`Gemini API error: ${lastErr}`);
     }
 
     const data = await res.json();
