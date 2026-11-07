@@ -63,12 +63,8 @@ export async function POST(req: NextRequest) {
         imageMimeType,
       });
     } catch (primaryErr: any) {
-      const isNvidia = provider.name.includes('NVIDIA');
-      if (isVercel || isNvidia) {
-        // On the vercel domain, or when NIM is the selected provider, do not fall back to publik.
-        // Surface the actual error.
-        throw primaryErr;
-      }
+      // shortcut: temporarily allow publik fallback on Vercel while NVIDIA account lacks
+      // 'Public API Endpoints' entitlement; revert to no-fallback once NVIDIA works.
       console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
       if (!provider.name.includes('publik')) {
         const { PublikProvider } = await import('@/core/providers/publik');
