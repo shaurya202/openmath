@@ -2,12 +2,14 @@ import { IMathProvider } from './types';
 import { GeminiProvider } from './geminiProvider';
 import { OpenAIProvider } from './openaiProvider';
 import { OllamaProvider } from './ollamaProvider';
+import { GroqProvider } from './groqProvider';
 import { PublikProvider } from './publik';
 
 export * from './types';
 export { GeminiProvider } from './geminiProvider';
 export { OpenAIProvider } from './openaiProvider';
 export { OllamaProvider } from './ollamaProvider';
+export { GroqProvider } from './groqProvider';
 export { PublikProvider } from './publik';
 
 export function getActiveMathProvider(host?: string | null): IMathProvider {
@@ -31,6 +33,12 @@ export function getActiveMathProvider(host?: string | null): IMathProvider {
       return new OllamaProvider(process.env.OLLAMA_MODEL || 'gemma4:31b-cloud');
     }
     return new PublikProvider();
+  }
+
+  // If a Groq key is present, use it (fast text inference).
+  if (process.env.GROQ_API_KEY) {
+    const groq = new GroqProvider();
+    if (groq.isAvailable()) return groq;
   }
 
   // If a Gemini key is present in the environment, use it (Vercel or anywhere).

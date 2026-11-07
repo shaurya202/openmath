@@ -24,7 +24,13 @@ export async function POST(req: NextRequest) {
     }
 
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-    const provider = getActiveMathProvider(host);
+    let provider = getActiveMathProvider(host);
+  // Groq is text-only; prefer Gemini for image OCR when available.
+  if (process.env.GEMINI_API_KEY) {
+    const { GeminiProvider } = await import('@/core/providers/geminiProvider');
+    const gemini = new GeminiProvider();
+    if (gemini.isAvailable()) provider = gemini;
+  }
 
     if (!provider.isAvailable()) {
       return NextResponse.json(

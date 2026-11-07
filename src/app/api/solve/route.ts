@@ -64,22 +64,30 @@ export async function POST(req: NextRequest) {
       });
     } catch (primaryErr: any) {
       console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
-      if (!provider.name.includes('publik')) {
+      // Try Gemini (multimodal) next, then publik balance.
+      if (process.env.GEMINI_API_KEY && !provider.name.includes('Gemini')) {
+        try {
+          const { GeminiProvider } = await import('@/core/providers/geminiProvider');
+          const gemini = new GeminiProvider();
+          if (gemini.isAvailable()) {
+            solution = await gemini.solve({ query: query || '', imageBase64, imageMimeType });
+            usedProviderName = gemini.name;
+          }
+        } catch {
+          // fall through to publik
+        }
+      }
+      if (!solution && !provider.name.includes('publik')) {
         const { PublikProvider } = await import('@/core/providers/publik');
         const fallback = new PublikProvider();
         if (fallback.isAvailable()) {
-          solution = await fallback.solve({
-            query: query || '',
-            imageBase64,
-            imageMimeType,
-          });
+          solution = await fallback.solve({ query: query || '', imageBase64, imageMimeType });
           usedProviderName = fallback.name;
         } else {
           throw primaryErr;
         }
-      } else {
-        throw primaryErr;
       }
+      if (!solution) throw primaryErr;
     }
 
     return NextResponse.json({
