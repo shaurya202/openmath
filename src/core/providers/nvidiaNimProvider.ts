@@ -39,9 +39,10 @@ export class NvidiaNimProvider implements IMathProvider {
   private model: string;
 
   constructor(apiKey?: string, baseURL?: string, model?: string) {
-    this.apiKey = apiKey || process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.NIM_API_KEY || process.env.NVIDIA_KEY || process.env.NIM_KEY;
-    this.baseURL = baseURL || process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-    this.model = model || process.env.NVIDIA_NIM_MODEL || DEFAULT_NIM_MODEL;
+    const rawKey = apiKey || process.env.NVIDIA_NIM_API_KEY || process.env.NVIDIA_API_KEY || process.env.NIM_API_KEY || process.env.NVIDIA_KEY || process.env.NIM_KEY;
+    this.apiKey = rawKey ? rawKey.trim().replace(/^['"]|['"]$/g, '') : undefined;
+    this.baseURL = (baseURL || process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1').trim().replace(/\/+$/, '');
+    this.model = (model || process.env.NVIDIA_NIM_MODEL || DEFAULT_NIM_MODEL).trim().replace(/^['"]|['"]$/g, '');
     this.name = `NVIDIA NIM (${this.model})`;
   }
 
