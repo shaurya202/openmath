@@ -25,7 +25,7 @@ test.describe('OpenMath AP Exam Hub', () => {
     await expect(page.getByText('Intermediate Value Theorem (IVT)')).toBeVisible();
 
     // Close sheet
-    const closeButton = page.getByRole('button', { name: /Close|Done/i }).or(page.locator('button:has-text("✕"), button[aria-label="Close"]'));
+    const closeButton = page.getByRole('button', { name: /Close|Done/i }).or(page.locator('button[aria-label*="Close"]'));
     if (await closeButton.isVisible()) {
       await closeButton.click();
     } else {

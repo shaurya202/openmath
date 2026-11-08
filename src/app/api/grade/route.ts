@@ -22,7 +22,9 @@ export async function POST(req: NextRequest) {
     // Use active AI provider if available (publik, Ollama, Gemini, OpenAI)
     if (provider.isAvailable()) {
       try {
-        const prompt = `Grade the following student math response against the rubric.
+        const prompt = `You are an encouraging, thoughtful human math teacher grading a student's free-response work.
+Speak directly to the student in a warm, constructive, human voice.
+
 Question: ${question}
 Expected Answer: ${correctAnswer || 'Standard mathematical derivation'}
 Rubric: ${JSON.stringify(rubric || [])}
@@ -34,12 +36,12 @@ Return ONLY valid JSON matching this schema:
   "maxScore": 4.0,
   "percentage": 87.5,
   "rubricBreakdown": [
-    { "criterion": "1. Conceptual Setup & Formula Selection", "score": 1, "maxPoints": 1, "feedback": "Good choice of rule" },
-    { "criterion": "2. Intermediate Derivation & Step Rigor", "score": 1, "maxPoints": 1, "feedback": "Steps are logical" },
-    { "criterion": "3. Dimensional & Unit Consistency", "score": 1, "maxPoints": 1, "feedback": "Signs and units maintained" },
-    { "criterion": "4. Final Accuracy & Boxed Value", "score": 0.5, "maxPoints": 1, "feedback": "Calculation details" }
+    { "criterion": "1. Conceptual Setup & Formula Selection", "score": 1, "maxPoints": 1, "feedback": "Clear, friendly note on what formula was chosen and why it fits" },
+    { "criterion": "2. Intermediate Derivation & Step Rigor", "score": 1, "maxPoints": 1, "feedback": "Human feedback on the algebraic progression and intermediate steps" },
+    { "criterion": "3. Dimensional & Unit Consistency", "score": 1, "maxPoints": 1, "feedback": "Specific feedback on signs, units, or notation" },
+    { "criterion": "4. Final Accuracy & Boxed Value", "score": 0.5, "maxPoints": 1, "feedback": "Friendly feedback on the final calculation" }
   ],
-  "overallFeedback": "Overall feedback summary."
+  "overallFeedback": "Warm, encouraging tutor feedback directly addressing the student, highlighting what went well and pointing out how to fix any error."
 }`;
         const res = await provider.solve({ query: prompt });
         const rawJson = res.boxedAnswer || res.interpretation;
@@ -111,47 +113,47 @@ Return ONLY valid JSON matching this schema:
           score: setupScore,
           maxPoints: 1.0,
           feedback: setupScore === 1.0
-            ? 'Accurately identified governing mathematical principles and formulas.'
-            : 'Conceptual framework not demonstrated or missing integral setup.',
+            ? 'Spot on: you chose the right governing formula and set up the problem cleanly.'
+            : 'Looks like the core formula or integral setup is missing here. Start by writing down the governing equation.',
         },
         {
           criterion: '2. Intermediate Derivation & Step Rigor',
           score: derivationScore,
           maxPoints: 1.0,
           feedback: derivationScore === 1.0
-            ? 'Clear algebraic manipulations demonstrated across intermediate lines.'
-            : 'Intermediate steps skipped, incomplete, or absent.',
+            ? 'Solid algebra throughout—your line-by-line derivation is easy to follow.'
+            : 'A few intermediate steps were skipped or left out. Write out each substitution so your reasoning is clear.',
         },
         {
           criterion: '3. Dimensional & Unit Consistency',
           score: consistencyScore,
           maxPoints: 1.0,
           feedback: consistencyScore === 1.0
-            ? 'Units, signs, and variable bindings maintained accurately throughout.'
-            : 'Missing justification or inconsistent signs.',
+            ? 'Great attention to detail with signs, bounds, and variable bindings.'
+            : 'Double check your signs and limits of integration to make sure terms stay consistent.',
         },
         {
           criterion: '4. Final Accuracy & Boxed Value',
           score: finalScore,
           maxPoints: 1.0,
           feedback: finalScore === 1.0
-            ? 'Correct target answer reached with exact formulation.'
+            ? 'Nailed the final answer!'
             : finalScore > 0
-            ? 'Approached the correct target answer with minor discrepancy.'
-            : 'Final answer incorrect or uncalculated.',
+            ? 'Very close to the target result—just check your final arithmetic simplification.'
+            : 'The final value didn\'t match the target answer. Walk back through the last few algebraic steps.',
         },
       ],
       overallFeedback: totalScore >= 3.0
-        ? 'Great mathematical comprehension! The conceptual formulation and algebraic progression were thoroughly executed.'
+        ? 'Really impressive work! Your conceptual setup is sharp, the steps flow logically, and you reached the right answer with solid rigor.'
         : totalScore >= 1.5
-        ? 'Partial credit awarded. Make sure to clearly write each intermediate step and verify the final value.'
-        : 'Incomplete or unverified response. Show all mathematical setup, intermediate substitutions, and calculations to earn credit.',
+        ? 'Good start here! You have the right intuition in places, but be sure to write down each step of your derivation so you don\'t lose easy points.'
+        : 'Take another crack at this one. Break the problem into parts: write down the starting formula first, show each intermediate calculation, and double check your arithmetic at the end.',
       correctedSolutionLatex: correctAnswer || '32/3',
     };
 
     return NextResponse.json({ success: true, result });
-  } catch (err: any) {
+  } catch (err) {
     console.error('API /api/grade error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

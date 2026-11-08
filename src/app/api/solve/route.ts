@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
             }
             controller.enqueue(textEncoder.encode('data: [DONE]\n\n'));
             controller.close();
-          } catch (err: any) {
+          } catch (err) {
             controller.error(err);
           }
         },
@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
         imageBase64,
         imageMimeType,
       });
-    } catch (primaryErr: any) {
-      console.warn('Primary provider failed, falling back to publik:', primaryErr.message || primaryErr);
+    } catch (primaryErr) {
+      console.warn('Primary provider failed, falling back to publik:', primaryErr instanceof Error ? primaryErr.message : primaryErr);
       // Try Gemini (multimodal) next, then publik balance.
       if (process.env.GEMINI_API_KEY && !provider.name.includes('Gemini')) {
         try {
@@ -95,13 +95,15 @@ export async function POST(req: NextRequest) {
       provider: usedProviderName,
       solution,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('API /api/solve error:', error);
-    const topUpMatch = error.message?.match(/https?:\/\/[^\s]+/);
-    const is402 = error.status === 402 || error.message?.includes('402') || error.message?.includes('balance exhausted');
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStatus = typeof error === 'object' && error !== null && 'status' in error ? (error as { status?: number }).status : undefined;
+    const topUpMatch = errMsg.match(/https?:\/\/[^\s]+/);
+    const is402 = errStatus === 402 || errMsg.includes('402') || errMsg.includes('balance exhausted');
     return NextResponse.json(
       {
-        error: error.message || 'Internal solver error',
+        error: errMsg || 'Internal solver error',
         topUpUrl: topUpMatch ? topUpMatch[0] : undefined,
       },
       { status: is402 ? 402 : 500 }

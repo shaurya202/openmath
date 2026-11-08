@@ -38,7 +38,7 @@ interface PublikStatus {
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const [isDark, setIsDark] = useState<boolean>(true);
+  const [isDark, setIsDark] = useState<boolean>(false);
   const [publikStatus, setPublikStatus] = useState<PublikStatus | null>(null);
   const [showPublikModal, setShowPublikModal] = useState(false);
   const [showDisclosureModal, setShowDisclosureModal] = useState(false);
@@ -47,12 +47,12 @@ export const Navbar: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('openmath_theme');
-    if (saved === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
-    } else {
+    if (saved === 'dark') {
       setIsDark(true);
       document.documentElement.classList.add('dark');
+    } else {
+      setIsDark(false);
+      document.documentElement.classList.remove('dark');
     }
 
     // Fetch publik API status
@@ -96,8 +96,8 @@ export const Navbar: React.FC = () => {
       const updated = await (await fetch('/api/publik/status')).json();
       setPublikStatus(updated);
       setShowPublikModal(true);
-    } catch (err: any) {
-      setErrorMsg(err.message || String(err));
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
       setProvisioning(false);
     }
@@ -113,32 +113,34 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-dark-bg/80 border-b border-gray-200/80 dark:border-dark-border/80 transition-colors">
+      <nav className="sticky top-0 z-50 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-sm border-b border-gray-200 dark:border-dark-border transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14">
             {/* Logo & Model/Publik Badge */}
             <div className="flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2.5 group">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-                  <span className="font-bold text-lg leading-none">Ω</span>
+                <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white">
+                  <Pi className="w-4 h-4" />
                 </div>
-                <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
-                  OpenMath
-                </span>
+                <div className="flex items-baseline">
+                  <span className="font-semibold text-base text-gray-900 dark:text-white tracking-tight">
+                    OpenMath
+                  </span>
+                </div>
               </Link>
 
               {publikStatus?.activeProvider?.includes('NVIDIA') ? (
-                <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  <Sparkles className="w-3 h-3 mr-1 text-emerald-500" />
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800"> {/* unslop-ignore: deliberate chalkboard palette */}
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
                   <span>{publikStatus.activeProvider}</span>
                 </span>
               ) : publikStatus?.credential ? (
                 <button
                   type="button"
                   onClick={() => setShowPublikModal(!showPublikModal)}
-                  className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 transition-colors cursor-pointer"
+                  className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-brand-50 text-brand-800 dark:bg-brand-950/60 dark:text-brand-200 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 transition-colors cursor-pointer"
                 >
-                  <Sparkles className="w-3 h-3 mr-1 text-brand-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mr-1.5" />
                   <span>{publikStatus.credential.balanceLine || 'publik API active'}</span>
                   <ChevronDown className="w-3 h-3 ml-1 opacity-70" />
                 </button>
@@ -146,7 +148,7 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowDisclosureModal(true)}
-                  className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+                  className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3 mr-1 text-amber-500" />
                   <span>Enable publik AI ($0.05 free)</span>
@@ -155,7 +157,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Nav Links */}
-            <div className="hidden md:flex items-center space-x-1">
+            <div className="hidden md:flex items-center space-x-0.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -163,13 +165,13 @@ export const Navbar: React.FC = () => {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400 font-semibold'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
+                        ? 'bg-brand-50 text-brand-700 dark:bg-dark-card dark:text-white border border-brand-200/80 dark:border-dark-border font-semibold'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/70 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5 opacity-80" />
                     <span>{item.name}</span>
                   </Link>
                 );
@@ -180,7 +182,7 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface transition-colors"
+                className="p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface transition-colors border border-transparent hover:border-gray-200 dark:hover:border-dark-border"
                 aria-label="Toggle theme"
               >
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -191,7 +193,7 @@ export const Navbar: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="OpenMath on GitHub"
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-dark-border text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-dark-border text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-surface transition-colors"
               >
                 <Github className="w-3.5 h-3.5" />
                 <span>GitHub</span>
@@ -201,7 +203,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Mobile nav bar row */}
-        <div className="flex md:hidden border-t border-gray-100 dark:border-dark-border/60 px-4 py-2 overflow-x-auto space-x-2">
+        <div className="flex md:hidden border-t border-gray-100 dark:border-dark-border/60 px-4 py-1.5 overflow-x-auto space-x-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -209,9 +211,9 @@ export const Navbar: React.FC = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
                   isActive
-                    ? 'bg-brand-500 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'text-gray-600 dark:text-dark-muted hover:bg-gray-100 dark:hover:bg-dark-surface'
                 }`}
               >
@@ -226,7 +228,7 @@ export const Navbar: React.FC = () => {
       {/* publik First-Run / Status Card Popover Modal */}
       {showPublikModal && publikStatus?.credential && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+          <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-6 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-5 h-5 text-brand-500" />
@@ -297,7 +299,7 @@ export const Navbar: React.FC = () => {
       {/* publik Disclosure Modal */}
       {showDisclosureModal && publikStatus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+          <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-6 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400">
               <Sparkles className="w-5 h-5" />
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">

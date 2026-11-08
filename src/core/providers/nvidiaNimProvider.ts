@@ -1,22 +1,5 @@
-import { IMathProvider, ProviderSolveRequest } from './types';
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from './types';
 import { MathSolution } from '@/types';
-import { extractGraphableFunctions } from '../math/latex';
-
-const SYSTEM_PROMPT = `You are OpenMath, a world-class AI mathematics tutor and solver powered by NVIDIA NIM.
-Format all math output using LaTeX:
-- Inline: $formula$
-- Display: $$formula$$
-Provide a structured step-by-step solution, followed by the final answer enclosed in \\boxed{answer}.
-Format as JSON:
-{
-  "interpretation": "Summary of problem with LaTeX",
-  "steps": [
-    { "stepNumber": 1, "title": "Step Name", "latex": "equation", "explanation": "text" }
-  ],
-  "boxedAnswer": "result",
-  "graphableFunctions": ["x^2"],
-  "suggestedFollowUps": ["Follow-up question"]
-}`;
 
 export const DEFAULT_NIM_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
 export const FALLBACK_NIM_MODELS = [
@@ -55,7 +38,7 @@ export class NvidiaNimProvider implements IMathProvider {
       throw new Error('NVIDIA_NIM_API_KEY is not configured');
     }
 
-    const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+    const messages: any[] = [{ role: 'system', content: MATH_SYSTEM_PROMPT }];
 
     if (request.imageBase64 && request.imageMimeType) {
       messages.push({
@@ -142,52 +125,8 @@ export class NvidiaNimProvider implements IMathProvider {
         this.name = `NVIDIA NIM (${currentModel})`;
 
         const data = await res.json();
-        const content = data.choices?.[0]?.message?.content || '{}';
-
-        let jsonStr = content.trim();
-        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          jsonStr = jsonMatch[1].trim();
-        } else {
-          const firstBrace = content.indexOf('{');
-          const lastBrace = content.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace > firstBrace) {
-            jsonStr = content.slice(firstBrace, lastBrace + 1);
-          }
-        }
-
-        const extractBoxed = (text: string) => {
-          const m = text.match(/\\boxed\{([^}]+)\}/);
-          return m ? m[1] : null;
-        };
-
-        try {
-          const parsed = JSON.parse(jsonStr);
-          return {
-            id: `nim-${Date.now()}`,
-            query: request.query,
-            interpretation: parsed.interpretation || request.query,
-            steps: Array.isArray(parsed.steps) ? parsed.steps : [],
-            boxedAnswer: parsed.boxedAnswer || extractBoxed(content) || 'N/A',
-            graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-            suggestedFollowUps: Array.isArray(parsed.suggestedFollowUps) ? parsed.suggestedFollowUps : [],
-            confidence: 0.99,
-            timestamp: Date.now(),
-          };
-        } catch {
-          const boxed = extractBoxed(content);
-          return {
-            id: `nim-raw-${Date.now()}`,
-            query: request.query,
-            interpretation: request.query,
-            steps: [{ stepNumber: 1, title: 'Solution', explanation: content }],
-            boxedAnswer: boxed || 'N/A',
-            graphableFunctions: extractGraphableFunctions(content),
-            suggestedFollowUps: [],
-            confidence: 0.95,
-            timestamp: Date.now(),
-          };
-        }
+        const content = data.choices?.[0]?.message?.content || '';
+        return parseSolutionResponse('nim', content, request.query);
       } catch (err: any) {
         lastError = err.message || String(err);
         continue;
@@ -203,7 +142,7 @@ export class NvidiaNimProvider implements IMathProvider {
       throw new Error('NVIDIA_NIM_API_KEY is not configured');
     }
 
-    const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+    const messages: any[] = [{ role: 'system', content: MATH_SYSTEM_PROMPT }];
     if (request.imageBase64 && request.imageMimeType) {
       messages.push({
         role: 'user',

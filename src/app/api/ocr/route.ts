@@ -51,15 +51,15 @@ export async function POST(req: NextRequest) {
         transcription: solution.interpretation || 'Transcribed Math Problem',
         latex: solution.boxedAnswer || '',
       });
-    } catch (e: any) {
+    } catch (e) {
       console.error('Multimodal OCR transcription failed:', e);
       return NextResponse.json(
-        { error: e.message || 'Failed to transcribe math image with AI provider.' },
+        { error: (e instanceof Error ? e.message : String(e)) || 'Failed to transcribe math image with AI provider.' },
         { status: 502 }
       );
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('API /api/ocr error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

@@ -33,7 +33,7 @@ test.describe('OpenMath API Endpoints', () => {
     // Grader uses publik, nvidia, or mock evaluation fallback
     expect([200, 402, 500]).toContain(res.status());
     if (res.status() === 200) {
-      const data = await res.json();
+      const data = (await res.json()).result;
       expect(data).toHaveProperty('totalScore');
       expect(data).toHaveProperty('rubricBreakdown');
     }

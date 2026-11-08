@@ -102,20 +102,22 @@ export const FlashcardsDeck: React.FC = () => {
   return (
     <div className="max-w-xl mx-auto space-y-6">
       {/* Header with stats */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Brain className="w-5 h-5 text-brand-500" />
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-dark-border pb-3">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Formula flashcards
           </h2>
+          <p className="text-xs text-gray-500 dark:text-dark-muted">
+            Cards come back right before you'd forget them.
+          </p>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+          <span className="text-xs px-2.5 py-1 rounded bg-brand-50 text-brand-700 dark:bg-dark-card dark:text-brand-300 border border-brand-200/60 dark:border-dark-border">
             Card {currentIndex + 1} of {cards.length}
           </span>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center space-x-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-dark-surface hover:bg-gray-200 dark:hover:bg-dark-card transition-colors"
+            className="flex items-center space-x-1 text-xs font-medium px-3 py-1.5 rounded-md bg-gray-100 dark:bg-dark-surface hover:bg-gray-200 dark:hover:bg-dark-card border border-gray-200 dark:border-dark-border transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add card</span>
@@ -123,17 +125,17 @@ export const FlashcardsDeck: React.FC = () => {
         </div>
       </div>
 
-      {/* 3D Flip Card */}
+      {/* Index Folio Card */}
       <div
         onClick={() => setIsFlipped(!isFlipped)}
-        className="w-full min-h-[280px] cursor-pointer rounded-3xl border border-gray-200 dark:border-dark-border bg-gradient-to-b from-white to-gray-50 dark:from-dark-card dark:to-dark-surface p-8 shadow-md flex flex-col justify-between transition-all hover:shadow-lg relative overflow-hidden"
+        className="w-full min-h-[280px] cursor-pointer rounded-lg border border-gray-200 dark:border-dark-border border-t-2 border-t-brand-600 dark:border-t-brand-400 bg-white dark:bg-dark-card p-8 shadow-xs flex flex-col justify-between transition-colors hover:border-brand-400 relative overflow-hidden"
       >
-        <div className="flex justify-between items-center text-xs text-gray-400 dark:text-dark-muted font-medium">
-          <span className="uppercase tracking-wider font-semibold text-brand-500">
+        <div className="flex justify-between items-center text-xs text-gray-400 dark:text-dark-muted border-b border-gray-100 dark:border-dark-border/80 pb-2.5">
+          <span className="font-semibold text-brand-600 dark:text-brand-400 capitalize">
             {currentCard.subject}
           </span>
           <span className="flex items-center space-x-1">
-            <RotateCw className="w-3.5 h-3.5" />
+            <RotateCw className="w-3 h-3" />
             <span>Click to flip</span>
           </span>
         </div>
@@ -141,10 +143,10 @@ export const FlashcardsDeck: React.FC = () => {
         <div className="py-6 text-center my-auto">
           {!isFlipped ? (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                Prompt / Concept
+              <span className="text-xs text-gray-500 dark:text-dark-muted">
+                Question
               </span>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+              <p className="text-xl font-medium text-gray-900 dark:text-white">
                 {currentCard.front}
               </p>
               {currentCard.latexFront && (
@@ -155,10 +157,10 @@ export const FlashcardsDeck: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3 animate-fade-in">
-              <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">
                 Answer & Formula
               </span>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+              <p className="text-xl font-medium text-gray-900 dark:text-white">
                 {currentCard.back}
               </p>
               {currentCard.latexBack && (
@@ -170,8 +172,8 @@ export const FlashcardsDeck: React.FC = () => {
           )}
         </div>
 
-        <div className="text-[11px] text-center text-gray-400 dark:text-dark-muted">
-          SM-2 Interval: {currentCard.interval} days | Reps: {currentCard.repetitions} | EF: {currentCard.easeFactor}
+        <div className="text-xs text-center text-gray-400 dark:text-dark-muted border-t border-gray-100 dark:border-dark-border/80 pt-2.5">
+          Next review in {currentCard.interval} days · reviewed {currentCard.repetitions} times
         </div>
       </div>
 
@@ -236,7 +238,7 @@ export const FlashcardsDeck: React.FC = () => {
       {/* Add Custom Card Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
               Create New Math Flashcard
             </h3>
@@ -275,7 +277,7 @@ export const FlashcardsDeck: React.FC = () => {
                 </label>
                 <select
                   value={newSubject}
-                  onChange={(e: any) => setNewSubject(e.target.value)}
+                  onChange={(e) => setNewSubject(e.target.value as 'algebra' | 'calculus' | 'trigonometry')}
                   className="w-full mt-1 px-3 py-2 text-sm bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-gray-900 dark:text-white"
                 >
                   <option value="algebra">Algebra</option>

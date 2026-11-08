@@ -19,7 +19,7 @@ interface FunctionItem {
   visible: boolean;
 }
 
-const PALETTE = ['#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'];
+const PALETTE = ['#358eb8', '#d49b35', '#2d9d78', '#c85a32', '#7c6bb0', '#d15679'];
 
 interface CoordinateGrapherProps {
   initialFunctions?: string[];
@@ -258,9 +258,10 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
-    try {
-      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
-    } catch {}
+    const target = e.target as HTMLElement;
+    if (target.hasPointerCapture?.(e.pointerId)) {
+      target.releasePointerCapture(e.pointerId);
+    }
   };
 
   const resetView = () => {
@@ -290,11 +291,11 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
   return (
     <div className="w-full h-full flex flex-col space-y-4">
       {/* Top toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-dark-card p-3 rounded-2xl border border-gray-200 dark:border-dark-border shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-dark-card p-3 rounded-lg border border-gray-200 dark:border-dark-border shadow-2xs">
         {/* Function input bar */}
         <form onSubmit={addFunction} className="flex-1 flex items-center space-x-2 min-w-[280px]">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-brand-600">
+            <span className="absolute left-3 top-2 text-xs font-serif italic font-semibold text-brand-600 dark:text-brand-400">
               f(x) =
             </span>
             <input
@@ -303,12 +304,12 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
               onChange={(e) => setNewExpr(e.target.value)}
               placeholder="e.g. x^2 - 4x + 3, sin(x), 2*x"
               aria-label="Mathematical function to plot"
-              className="w-full pl-14 pr-3 py-2 text-sm bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full pl-14 pr-3 py-1.5 text-sm font-mono bg-gray-50 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-md text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <button
             type="submit"
-            className="flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs"
+            className="flex items-center space-x-1 px-3.5 py-1.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium"
           >
             <Plus className="w-4 h-4" />
             <span>Plot</span>
@@ -319,30 +320,30 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
         <div className="flex items-center space-x-1.5">
           <button
             onClick={() => handleZoom(1.25)}
-            className="p-2 rounded-lg border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
+            className="p-1.5 rounded-md border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleZoom(0.8)}
-            className="p-2 rounded-lg border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
+            className="p-1.5 rounded-md border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={resetView}
-            className="p-2 rounded-lg border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
+            className="p-1.5 rounded-md border border-gray-200 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-surface text-gray-600 dark:text-dark-muted"
             title="Reset View"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setUseGeoGebra(!useGeoGebra)}
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
               useGeoGebra
-                ? 'bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300'
+                ? 'bg-brand-50 text-brand-700 border-brand-300 dark:bg-brand-950/40 dark:text-brand-300'
                 : 'border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-muted'
             }`}
           >
@@ -355,7 +356,7 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
       {/* Main Canvas / GeoGebra area */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-[500px]">
         {/* Graph Display */}
-        <div className="flex-1 relative rounded-2xl border border-gray-200 dark:border-dark-border overflow-hidden bg-white dark:bg-dark-card shadow-xs min-h-[400px]">
+        <div className="flex-1 relative rounded-lg border border-gray-200 dark:border-dark-border overflow-hidden bg-white dark:bg-dark-card shadow-2xs min-h-[400px]">
           {useGeoGebra ? (
             <iframe
               src="https://www.geogebra.org/calculator"
@@ -375,8 +376,8 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
               />
               {/* Live Coordinates Pill */}
               {mouseCoord && (
-                <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-xs text-white px-2.5 py-1 rounded-lg text-xs font-mono">
-                  x: {mouseCoord.x}, y: {mouseCoord.y}
+                <div className="absolute bottom-3 right-3 bg-dark-bg/90 border border-dark-border text-white px-2.5 py-1 rounded text-xs font-mono">
+                  ({mouseCoord.x}, {mouseCoord.y})
                 </div>
               )}
             </>
@@ -384,22 +385,22 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
         </div>
 
         {/* Functions sidebar */}
-        <div className="w-full lg:w-72 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="w-full lg:w-72 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-dark-border/80">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-dark-muted">
+            <span className="font-serif text-sm font-semibold text-gray-800 dark:text-gray-200">
               Plotted Functions ({functions.length})
             </span>
           </div>
 
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          <div className="divide-y divide-gray-100 dark:divide-dark-border border border-gray-200/80 dark:border-dark-border rounded-md max-h-[400px] overflow-y-auto">
             {functions.map((fn, idx) => (
               <div
                 key={fn.id}
-                className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 dark:border-dark-border/60 bg-gray-50/60 dark:bg-dark-surface/40"
+                className="flex items-center justify-between p-2.5 bg-gray-50/40 dark:bg-dark-surface/30"
               >
                 <div className="flex items-center space-x-2.5 min-w-0">
                   <span
-                    className="w-3 h-3 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-xs shrink-0"
                     style={{ backgroundColor: fn.color }}
                   />
                   <div className="min-w-0">
@@ -410,7 +411,7 @@ export const CoordinateGrapher: React.FC<CoordinateGrapherProps> = ({
                 </div>
                 <button
                   onClick={() => removeFunction(fn.id)}
-                  className="text-gray-400 hover:text-red-500 p-1 rounded-md transition-colors"
+                  className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors"
                   title="Delete"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

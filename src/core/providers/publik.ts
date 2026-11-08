@@ -2,12 +2,11 @@
 // the user's own key > PUBLIK_API_KEY / PUBLIK_API_BASE_URL env > this app's
 // credential file > provision on first launch (after the user accepts
 // DISCLOSURE) > the user's own key again if provisioning fails.
-import { randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { arch, homedir, hostname, platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { IMathProvider, ProviderSolveRequest } from "./types";
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from "./types";
 import { MathSolution } from "@/types";
 import { extractGraphableFunctions } from "../math/latex";
 
@@ -143,7 +142,7 @@ export async function provision(): Promise<PublikCredential> {
   const token = appToken();
   if (!token.startsWith("pat_")) throw new Error("This build has no publik API app token. Use your own key for now.");
   const prior = readCredential();
-  let installId = prior?.install_id ?? randomUUID();
+  let installId = prior?.install_id ?? crypto.randomUUID();
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(`${DEFAULT_BASE_URL}/installs`, {
       method: "POST",
@@ -168,7 +167,7 @@ export async function provision(): Promise<PublikCredential> {
       return c;
     }
     // A replay with no key on disk, or an install its owner revoked: one fresh install_id.
-    if (res.status === 200 || body.error?.type === "install_revoked") { installId = randomUUID(); continue; }
+    if (res.status === 200 || body.error?.type === "install_revoked") { installId = crypto.randomUUID(); continue; }
     throw new Error(body.error?.message ?? `publik API could not set up this computer (${res.status}). Use your own key for now.`);
   }
   throw new Error("publik API could not set up this computer. Use your own key for now.");
@@ -211,22 +210,6 @@ export async function search(p: Extract<Provider, { kind: "publik" }>, q: string
   return { results: body.results ?? [] };
 }
 
-const SYSTEM_PROMPT = `You are OpenMath, a world-class AI mathematics tutor and solver.
-Format all math output using LaTeX:
-- Inline: $formula$
-- Display: $$formula$$
-Provide a structured step-by-step solution, followed by the final answer enclosed in \\boxed{answer}.
-Format as JSON:
-{
-  "interpretation": "Summary of problem with LaTeX",
-  "steps": [
-    { "stepNumber": 1, "title": "Step Name", "latex": "equation", "explanation": "text" }
-  ],
-  "boxedAnswer": "result",
-  "graphableFunctions": ["x^2"],
-  "suggestedFollowUps": ["Follow-up question"]
-}`;
-
 export class PublikProvider implements IMathProvider {
   readonly name = "publik API (publik-fast)";
 
@@ -247,7 +230,7 @@ export class PublikProvider implements IMathProvider {
 
   async solve(request: ProviderSolveRequest): Promise<MathSolution> {
     const creds = await this.getActiveCredentials();
-    const messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+    const messages: Array<{ role: string; content: unknown }> = [{ role: "system", content: MATH_SYSTEM_PROMPT }];
 
     if (request.imageBase64 && request.imageMimeType) {
       messages.push({
@@ -275,7 +258,6 @@ export class PublikProvider implements IMathProvider {
       body: JSON.stringify({
         model: MODELS.fast,
         messages,
-        response_format: { type: "json_object" },
         temperature: 0.1,
       }),
     });
@@ -292,39 +274,13 @@ export class PublikProvider implements IMathProvider {
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        id: `publik-${Date.now()}`,
-        query: request.query,
-        interpretation: parsed.interpretation || request.query,
-        steps: parsed.steps || [],
-        boxedAnswer: parsed.boxedAnswer || "N/A",
-        graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-        suggestedFollowUps: parsed.suggestedFollowUps || [],
-        confidence: 0.99,
-        timestamp: Date.now(),
-      };
-    } catch {
-      return {
-        id: `publik-raw-${Date.now()}`,
-        query: request.query,
-        interpretation: request.query,
-        steps: [{ stepNumber: 1, title: "Solution", explanation: content }],
-        boxedAnswer: "N/A",
-        graphableFunctions: extractGraphableFunctions(content),
-        suggestedFollowUps: [],
-        confidence: 0.95,
-        timestamp: Date.now(),
-      };
-    }
+    const content = data.choices?.[0]?.message?.content || "";
+    return parseSolutionResponse("publik", content, request.query);
   }
 
   async *solveStream(request: ProviderSolveRequest): AsyncIterable<string> {
     const creds = await this.getActiveCredentials();
-    const messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+    const messages: Array<{ role: string; content: string }> = [{ role: "system", content: MATH_SYSTEM_PROMPT }];
     messages.push({ role: "user", content: request.query });
 
     const res = await fetch(`${creds.baseURL}/chat/completions`, {

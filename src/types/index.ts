@@ -18,9 +18,10 @@ export type MathSolution = {
   id: string;
   query: string;
   subject?: MathSubject;
-  interpretation: string;
-  steps: SolutionStep[];
-  boxedAnswer: string;
+  content?: string;
+  interpretation?: string;
+  steps?: SolutionStep[];
+  boxedAnswer?: string;
   graphableFunctions?: string[];
   suggestedFollowUps?: string[];
   confidence?: number;
@@ -65,7 +66,7 @@ export type ArtifactData = {
   type: ArtifactType;
   title: string;
   subtitle?: string;
-  data: any;
+  data: Record<string, unknown>;
 };
 
 export type Flashcard = {

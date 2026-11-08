@@ -62,7 +62,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
+          className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
             isDragging
               ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 scale-[0.99]'
               : 'border-gray-200 dark:border-dark-border hover:border-brand-400 bg-gray-50/50 dark:bg-dark-surface/50'

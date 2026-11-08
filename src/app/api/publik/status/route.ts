@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
         : null,
       disclosure: DISCLOSURE,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         balanceLine: balanceLine(cred.balance_micros, cred.claim_state),
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

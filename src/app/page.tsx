@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, MathSolution, ChatSession, ArtifactData, InlinePracticeQuestion } from '@/types';
@@ -18,12 +18,37 @@ import {
   Mic,
   MicOff,
   Calculator,
-  Wrench,
   GraduationCap,
   FileQuestion,
   LineChart,
   Zap,
 } from 'lucide-react';
+
+const EXAMPLES = [
+  { subject: 'Algebra', title: 'Polynomial Equation', formula: '2x^2 + 5x - 3 = 0', prompt: 'Solve 2x^2 + 5x - 3 = 0' },
+  { subject: 'Calculus', title: 'Trigonometric Limit', formula: '\\lim_{x \\to 0} \\frac{\\sin(4x)}{x}', prompt: 'Evaluate lim_{x->0} sin(4x)/x' },
+  { subject: 'Calculus', title: 'Product Rule Derivative', formula: '\\frac{d}{dx}\\left[x^2 \\ln(x)\\right]', prompt: 'Derivative of x^2 * ln(x)' },
+  { subject: 'Calculus', title: 'Indefinite Integral', formula: '\\int x e^{2x} \\, dx', prompt: 'Evaluate integral of x * e^(2x) dx' },
+];
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: () => void;
+  onresult: (event: { results: { transcript: string }[][] }) => void;
+  onerror: () => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+  }
+}
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -35,7 +60,7 @@ export default function Home() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
-  const [showToolSelector, setShowToolSelector] = useState(false);
+  const [subject, setSubject] = useState('All');
   const [isRecording, setIsRecording] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState<ArtifactData | null>(null);
 
@@ -103,7 +128,9 @@ export default function Home() {
 
       try {
         localStorage.setItem('openmath_chat_sessions', JSON.stringify(updated));
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to persist chat sessions:', e);
+      }
 
       return updated;
     });
@@ -125,7 +152,7 @@ export default function Home() {
       return;
     }
 
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
       alert('Speech Recognition is not supported by your current browser.');
       return;
@@ -141,7 +168,7 @@ export default function Home() {
         setIsRecording(true);
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         if (transcript) {
           setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
@@ -237,7 +264,7 @@ export default function Home() {
         const assistantMsg: ChatMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: data.solution.boxedAnswer,
+          content: data.solution.content || data.solution.boxedAnswer || data.solution.interpretation || '',
           solution: data.solution,
           timestamp: Date.now(),
         };
@@ -252,12 +279,13 @@ export default function Home() {
         };
         setMessages((prev) => [...prev, errorMsg]);
       }
-    } catch (err: any) {
-      const topUpMatch = err.message?.match(/https?:\/\/[^\s]+/);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const topUpMatch = message.match(/https?:\/\/[^\s]+/);
       const errorMsg: ChatMessage = {
         id: `assistant-err-${Date.now()}`,
         role: 'assistant',
-        content: `Error: ${err.message}.`,
+        content: `Error: ${message}.`,
         topUpUrl: topUpMatch ? topUpMatch[0] : undefined,
         timestamp: Date.now(),
       };
@@ -269,23 +297,24 @@ export default function Home() {
 
   // In-Chat Practice Question Generator
   const handleCreatePracticeQuestion = (solution: MathSolution) => {
+    const boxed = solution.boxedAnswer || 'x = 0';
     const practiceQ: InlinePracticeQuestion = {
       id: `pq-${Date.now()}`,
       question: `Solve for x: $${solution.query}$.`,
       options: [
-        solution.boxedAnswer,
+        boxed,
         'x = 1 \\text{ or } x = -2',
         'x = 3 \\text{ or } x = -1',
         '\\text{No real solutions}',
       ],
       correctOptionIndex: 0,
-      explanation: `Substitute root into original equation to verify: $${solution.boxedAnswer}$.`,
+      explanation: `Substitute root into original equation to verify: $${boxed}$.`,
     };
 
     const newMsg: ChatMessage = {
       id: `assistant-pq-${Date.now()}`,
       role: 'assistant',
-      content: 'Practice problem:',
+      content: "Here's a quick practice question to test your understanding:",
       practiceQuestion: practiceQ,
       timestamp: Date.now(),
     };
@@ -295,6 +324,7 @@ export default function Home() {
 
   // Practice Test Generator (Opens Artifact Drawer)
   const handleCreatePracticeTest = (solution: MathSolution) => {
+    const boxed = solution.boxedAnswer || 'x = 0';
     setActiveArtifact({
       id: `test-${Date.now()}`,
       type: 'practice_test',
@@ -305,9 +335,9 @@ export default function Home() {
           {
             id: 'q1',
             question: `Which of the following is equivalent to the final root of $${solution.query}$?`,
-            options: [solution.boxedAnswer, 'x = 0', 'x = \\pm 1', 'x = 4'],
+            options: [boxed, 'x = 0', 'x = \\pm 1', 'x = 4'],
             correctOptionIndex: 0,
-            explanation: `The solution is verified by direct substitution: $${solution.boxedAnswer}$.`,
+            explanation: `The solution is verified by direct substitution: $${boxed}$.`,
           },
           {
             id: 'q2',
@@ -316,7 +346,7 @@ export default function Home() {
               'Quadratic formula / factoring by grouping',
               'Integration by parts',
               'Binomial expansion',
-              "L'Hôpital's rule",
+              "L'HÃ´pital's rule",
             ],
             correctOptionIndex: 0,
             explanation: 'The equation is quadratic, solved via algebraic factorization or the quadratic formula.',
@@ -344,9 +374,9 @@ export default function Home() {
       id: `video-${Date.now()}`,
       type: 'video_explainer',
       title: `Walkthrough: ${solution.query.slice(0, 24)}`,
-      subtitle: `${solution.steps.length} derivation steps`,
+      subtitle: `${solution.steps?.length || 0} derivation steps`,
       data: {
-        steps: solution.steps,
+        steps: solution.steps || [],
       },
     });
   };
@@ -375,15 +405,159 @@ export default function Home() {
     setSessions(updated);
     try {
       localStorage.setItem('openmath_chat_sessions', JSON.stringify(updated));
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to persist chat sessions:', err);
+    }
 
     if (activeSessionId === id) {
       handleNewChat();
     }
   };
 
+  const isEmpty = messages.length === 0;
+  const visibleExamples = EXAMPLES.filter((ex) => subject === 'All' || ex.subject === subject);
+
+  const toolButton = (active: boolean) =>
+    `px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-colors ${
+      active
+        ? 'bg-brand-100 text-brand-800 dark:bg-brand-950/60 dark:text-brand-300'
+        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
+    }`;
+
+  const composer = (
+    <div className="relative w-full">
+      {/* Floating Scientific Calculator Popover */}
+      <FloatingCalculator
+        isOpen={showCalculator}
+        onClose={() => setShowCalculator(false)}
+        onInsertToInput={(val) => {
+          setInput((prev) => (prev ? `${prev} ${val}` : val));
+          inputRef.current?.focus();
+        }}
+      />
+
+      <div className="rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm focus-within:ring-2 focus-within:ring-brand-500/40 focus-within:border-brand-500 transition-all p-3">
+        {attachedImage && (
+          <div className="mb-2 flex items-center space-x-2 px-2 py-1 bg-brand-50/50 dark:bg-brand-950/30 rounded text-xs text-brand-700 dark:text-brand-300">
+            <img src={attachedImage.previewUrl} alt="attachment" className="w-7 h-7 object-cover rounded" />
+            <span className="truncate">Worksheet attached</span>
+          </div>
+        )}
+
+        <textarea
+          ref={inputRef}
+          rows={isEmpty ? 3 : 2}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          aria-label="Mathematical expression input"
+          placeholder="Enter an equation or expression, or paste a word problem..."
+          className="w-full resize-none bg-transparent px-1 text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-dark-muted/70 focus:outline-none"
+        />
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center space-x-1">
+            <button
+              type="button"
+              onClick={() => setShowUploader(!showUploader)}
+              className={toolButton(showUploader)}
+              title="Upload a photo or PDF of your homework"
+              aria-label="Upload homework photo for OCR"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Photo or PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowKeyboard(!showKeyboard)}
+              className={toolButton(showKeyboard)}
+              title="Math keyboard"
+              aria-label="Toggle virtual math keyboard"
+            >
+              <Keyboard className="w-4 h-4" />
+              <span className="hidden sm:inline">Math keyboard</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCalculator(!showCalculator)}
+              className={toolButton(showCalculator)}
+              title="Calculator"
+              aria-label="Toggle Calculator"
+            >
+              <Calculator className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              className={
+                isRecording
+                  ? 'px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center bg-red-600 text-white animate-pulse'
+                  : toolButton(false)
+              }
+              title="Dictate your problem"
+              aria-label="Start Voice Recording"
+            >
+              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleSend()}
+            disabled={loading || (!input.trim() && !attachedImage)}
+            className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center space-x-1.5 disabled:opacity-40 transition-colors"
+            title="Solve"
+            aria-label="Solve math problem"
+          >
+            <span>Solve</span>
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const composerPanels = (
+    <>
+      {showUploader && (
+        <div className="w-full mb-2">
+          <div className="p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-md animate-fade-in">
+            <ImageUploader
+              selectedPreviewUrl={attachedImage?.previewUrl}
+              onImageSelected={(base64, mime, previewUrl) => {
+                setAttachedImage({ base64, mime, previewUrl });
+              }}
+              onClearImage={() => setAttachedImage(null)}
+              onSelectSamplePrompt={(p) => {
+                setInput(p);
+                setShowUploader(false);
+                setTimeout(() => inputRef.current?.focus(), 50);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      <MathKeyboard
+        isOpen={showKeyboard}
+        onClose={() => setShowKeyboard(false)}
+        onInsert={handleInsertFormula}
+        onBackspace={handleBackspace}
+        onSubmit={() => handleSend()}
+      />
+    </>
+  );
+
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Left Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -397,320 +571,108 @@ export default function Home() {
 
       {/* Main Chat Workspace */}
       <div className={`flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-16'}`}>
-        {/* Top Info Bar */}
-        <div className="py-2.5 px-4 sm:px-8 flex items-center justify-between text-xs text-gray-500 dark:text-dark-muted border-b border-gray-100 dark:border-dark-border/60 bg-white/40 dark:bg-dark-bg/40 backdrop-blur-xs">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="font-medium text-gray-600 dark:text-gray-300">
-              Calculation Engine Ready
-            </span>
-          </div>
+        {/* Top bar */}
+        <div className="py-2 px-4 sm:px-8 flex items-center justify-between text-xs text-gray-500 dark:text-dark-muted border-b border-gray-200/80 dark:border-dark-border bg-white/80 dark:bg-dark-bg/80">
+          <span className="font-medium text-gray-700 dark:text-gray-300">Math solver</span>
           <button
             onClick={handleNewChat}
-            className="flex items-center space-x-1.5 hover:text-red-500 transition-colors"
-            title="Start New Chat Session"
+            className="flex items-center space-x-1.5 text-xs hover:text-red-500 transition-colors"
+            title="Start a new chat"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear</span>
           </button>
         </div>
 
-        {/* Messages Feed or Blank Chat Hero */}
-        <div className={`flex-1 overflow-y-auto px-4 sm:px-8 py-4 space-y-4 max-w-4xl mx-auto w-full flex flex-col ${messages.length === 0 ? 'math-grid-pattern' : ''}`}>
-          {messages.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 px-4 animate-fade-in my-auto">
-              <div className="w-14 h-14 rounded-2xl bg-brand-600 dark:bg-brand-600/90 flex items-center justify-center text-white shadow-sm mb-5 border border-brand-500/20">
-                <span className="font-bold text-2xl leading-none">Ω</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
-                OpenMath
+        {isEmpty ? (
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 flex flex-col">
+            <div className="my-auto w-full max-w-2xl mx-auto">
+              <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
+                What math problem can I help you solve?
               </h1>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-dark-muted max-w-md mb-8">
-                Enter an equation, select an example, or attach a document.
+              <p className="mt-2 text-base text-gray-600 dark:text-dark-muted">
+                Type an equation, snap a photo of your worksheet, or try an example. I'll walk you through every step.
               </p>
 
-              {/* Quick Suggestion Lemma Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full text-left">
-                {[
-                  {
-                    subject: 'Polynomial Equation',
-                    formula: '2x^2 + 5x - 3 = 0',
-                    prompt: 'Solve 2x^2 + 5x - 3 = 0',
-                  },
-                  {
-                    subject: 'Trigonometric Limit',
-                    formula: '\\lim_{x \\to 0} \\frac{\\sin(4x)}{x}',
-                    prompt: 'Evaluate lim_{x->0} sin(4x)/x',
-                  },
-                  {
-                    subject: 'Product Rule Derivative',
-                    formula: '\\frac{d}{dx}\\left[x^2 \\ln(x)\\right]',
-                    prompt: 'Derivative of x^2 * ln(x)',
-                  },
-                  {
-                    subject: 'Indefinite Integral',
-                    formula: '\\int x e^{2x} \\, dx',
-                    prompt: 'Evaluate integral of x * e^(2x) dx',
-                  },
-                ].map((sugg, i) => (
+              <div className="mt-6">
+                {composerPanels}
+                {composer}
+              </div>
+
+              <div className="mt-6 flex items-center gap-2">
+                {['All', 'Algebra', 'Calculus'].map((s) => (
                   <button
-                    key={i}
+                    key={s}
+                    type="button"
+                    onClick={() => setSubject(s)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      subject === s
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:border-brand-400'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {visibleExamples.map((ex) => (
+                  <button
+                    key={ex.title}
                     type="button"
                     onClick={() => {
-                      setInput(sugg.prompt);
+                      setInput(ex.prompt);
                       inputRef.current?.focus();
                     }}
-                    className="p-3.5 rounded-xl border border-gray-200/90 dark:border-dark-border bg-white dark:bg-dark-card hover:border-brand-500 dark:hover:border-brand-500 hover:bg-gray-50/50 dark:hover:bg-dark-surface/60 transition-colors text-left flex flex-col justify-between min-h-[76px]"
+                    className="p-3 rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card hover:border-brand-400 transition-colors text-left"
                   >
-                    <span className="text-[11px] font-medium text-gray-500 dark:text-dark-muted mb-1.5">
-                      {sugg.subject}
-                    </span>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                      <MathView content={`$${sugg.formula}$`} />
+                    <div className="text-xs font-medium text-gray-600 dark:text-dark-muted mb-1">{ex.title}</div>
+                    <div className="text-sm text-gray-900 dark:text-white overflow-x-auto">
+                      <MathView content={`$${ex.formula}$`} />
                     </div>
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                onSelectPrompt={(p) => handleSend(p)}
-                onEditMessage={(c) => {
-                  setInput(c);
-                  inputRef.current?.focus();
-                }}
-                onRetryResponse={(q) => handleSend(q)}
-                onCreatePracticeQuestion={handleCreatePracticeQuestion}
-                onCreatePracticeTest={handleCreatePracticeTest}
-                onCreateVideoExplainer={handleCreateVideoExplainer}
-              />
-            ))
-          )}
-
-          {loading && (
-            <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-dark-muted py-3 animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-brand-600/30 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-              </div>
-              <span>Calculating solution...</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Image Uploader Panel */}
-        {showUploader && (
-          <div className="max-w-4xl mx-auto w-full px-4 sm:px-8 mb-2">
-            <div className="p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-md animate-fade-in">
-              <ImageUploader
-                selectedPreviewUrl={attachedImage?.previewUrl}
-                onImageSelected={(base64, mime, previewUrl) => {
-                  setAttachedImage({ base64, mime, previewUrl });
-                }}
-                onClearImage={() => setAttachedImage(null)}
-                onSelectSamplePrompt={(p) => {
-                  setInput(p);
-                  setShowUploader(false);
-                  setTimeout(() => inputRef.current?.focus(), 50);
-                }}
-              />
-            </div>
           </div>
-        )}
-
-        {/* Math Virtual Keyboard */}
-        <MathKeyboard
-          isOpen={showKeyboard}
-          onClose={() => setShowKeyboard(false)}
-          onInsert={handleInsertFormula}
-          onBackspace={handleBackspace}
-          onSubmit={() => handleSend()}
-        />
-
-        {/* Input Composer */}
-        <div className="py-3 px-4 sm:px-8 bg-white/60 dark:bg-dark-bg/60 backdrop-blur-md max-w-4xl mx-auto w-full relative">
-          {/* Floating Scientific Calculator Popover */}
-          <FloatingCalculator
-            isOpen={showCalculator}
-            onClose={() => setShowCalculator(false)}
-            onInsertToInput={(val) => {
-              setInput((prev) => (prev ? `${prev} ${val}` : val));
-              inputRef.current?.focus();
-            }}
-          />
-
-          <div className="relative rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-brand-500 transition-all p-2">
-            {attachedImage && (
-              <div className="mb-2 flex items-center space-x-2 px-2 py-1 bg-brand-50/50 dark:bg-brand-950/30 rounded-lg text-xs text-brand-700 dark:text-brand-300">
-                <img
-                  src={attachedImage.previewUrl}
-                  alt="attachment"
-                  className="w-7 h-7 object-cover rounded"
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-5 max-w-4xl mx-auto w-full flex flex-col">
+              {messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onSelectPrompt={(p) => handleSend(p)}
+                  onEditMessage={(c) => {
+                    setInput(c);
+                    inputRef.current?.focus();
+                  }}
+                  onRetryResponse={(q) => handleSend(q)}
+                  onCreatePracticeQuestion={handleCreatePracticeQuestion}
+                  onCreatePracticeTest={handleCreatePracticeTest}
+                  onCreateVideoExplainer={handleCreateVideoExplainer}
                 />
-                <span className="truncate">Document attached</span>
-              </div>
-            )}
+              ))}
 
-            <textarea
-              ref={inputRef}
-              rows={2}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              aria-label="Mathematical expression input"
-              placeholder="Enter an equation or expression (e.g., 2x^2 + 5x - 3 = 0, \int x e^x dx)..."
-              className="w-full resize-none bg-transparent px-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"
-            />
-
-            <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-dark-border/60">
-              <div className="flex items-center space-x-1 relative">
-                {/* Tool Selector Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowToolSelector(!showToolSelector)}
-                    aria-label="Tool Selector"
-                    title="Math Tools Menu"
-                    className="p-2 rounded-xl text-xs font-semibold flex items-center space-x-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface transition-colors"
-                  >
-                    <Wrench className="w-4 h-4" />
-                    <span className="hidden sm:inline">Tools</span>
-                  </button>
-
-                  {showToolSelector && (
-                    <div className="absolute bottom-10 left-0 z-50 w-52 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl py-1 text-xs animate-fade-in">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowUploader(true);
-                          setShowToolSelector(false);
-                        }}
-                        className="w-full flex items-center space-x-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-dark-surface"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5 text-brand-600" />
-                        <span>Upload Photo / PDF</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowCalculator(true);
-                          setShowToolSelector(false);
-                        }}
-                        className="w-full flex items-center space-x-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-dark-surface"
-                      >
-                        <Calculator className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Scientific Calculator</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowKeyboard(true);
-                          setShowToolSelector(false);
-                        }}
-                        className="w-full flex items-center space-x-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-dark-surface"
-                      >
-                        <Keyboard className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Virtual Math Keyboard</span>
-                      </button>
-                    </div>
-                  )}
+              {loading && (
+                <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-dark-muted py-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-brand-600/30 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  </div>
+                  <span>Working through the steps...</span>
                 </div>
-
-                {/* Calculator Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowCalculator(!showCalculator)}
-                  className={`p-2 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors ${
-                    showCalculator
-                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
-                  }`}
-                  title="Toggle Calculator"
-                  aria-label="Toggle Calculator"
-                >
-                  <Calculator className="w-4 h-4" />
-                </button>
-
-                {/* Math Keyboard Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowKeyboard(!showKeyboard)}
-                  className={`p-2 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors ${
-                    showKeyboard
-                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
-                  }`}
-                  title="Toggle Math Keyboard"
-                  aria-label="Toggle virtual math keyboard"
-                >
-                  <Keyboard className="w-4 h-4" />
-                  <span className="hidden sm:inline">Math Input</span>
-                </button>
-
-                {/* Photo OCR Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowUploader(!showUploader)}
-                  className={`p-2 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors ${
-                    showUploader
-                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
-                  }`}
-                  title="Upload Photo / Homework"
-                  aria-label="Upload homework photo for OCR"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                </button>
-
-                {/* Voice Dictation Button */}
-                <button
-                  type="button"
-                  onClick={toggleVoiceRecording}
-                  className={`p-2 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors ${
-                    isRecording
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-muted dark:hover:text-white dark:hover:bg-dark-surface'
-                  }`}
-                  title="Start Voice Recording"
-                  aria-label="Start Voice Recording"
-                >
-                  {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {/* Submit Solve Button */}
-              <button
-                type="button"
-                onClick={() => handleSend()}
-                disabled={loading || (!input.trim() && !attachedImage)}
-                className="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-40 transition-all shadow-xs"
-                title="Solve"
-                aria-label="Solve math problem"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Floating Scientific Calculator Popover */}
-      <FloatingCalculator
-        isOpen={showCalculator}
-        onClose={() => setShowCalculator(false)}
-        onInsertToInput={(val) => {
-          handleInsertFormula(val);
-          setShowCalculator(false);
-        }}
-      />
+            <div className="py-3 px-4 sm:px-8 bg-white/90 dark:bg-dark-bg/90 border-t border-gray-200/80 dark:border-dark-border max-w-4xl mx-auto w-full">
+              {composerPanels}
+              {composer}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Right-Hand Artifact Drawer */}
       <ArtifactDrawer

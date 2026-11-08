@@ -1,10 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArtifactData } from '@/types';
+import { ArtifactData, SolutionStep } from '@/types';
 import { MathView } from '../math/MathView';
-import { X, CheckCircle, XCircle, Award, Play, Pause, RotateCcw, ExternalLink } from 'lucide-react';
+import { X, CheckCircle, XCircle, Award, Play, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+interface ArtifactQuestion {
+  id?: string;
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+}
+
+interface ArtifactTheorem {
+  title: string;
+  latex: string;
+  description: string;
+}
 
 interface ArtifactDrawerProps {
   artifact: ArtifactData | null;
@@ -15,10 +29,14 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [checkedAnswers, setCheckedAnswers] = useState<Record<number, boolean>>({});
   const [showSteps, setShowSteps] = useState<Record<number, boolean>>({});
-  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [videoStep, setVideoStep] = useState(0);
 
   if (!artifact) return null;
+
+  const questions = (artifact.data.questions as ArtifactQuestion[] | undefined) || [];
+  const keyTheorems = (artifact.data.keyTheorems as ArtifactTheorem[] | undefined) || [];
+  const steps = (artifact.data.steps as SolutionStep[] | undefined) || [];
+  const overview = typeof artifact.data.overview === 'string' ? artifact.data.overview : '';
 
   const handleSelectOption = (qIdx: number, optIdx: number) => {
     if (checkedAnswers[qIdx]) return;
@@ -36,9 +54,9 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
     }
   };
 
-  const calculateScore = (questions: any[]) => {
+  const calculateScore = (qs: ArtifactQuestion[]) => {
     let correct = 0;
-    questions.forEach((q, idx) => {
+    qs.forEach((q, idx) => {
       if (selectedAnswers[idx] === q.correctOptionIndex) {
         correct++;
       }
@@ -78,30 +96,30 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
         {artifact.type === 'practice_test' && (
           <div className="space-y-6">
             {/* Score Banner */}
-            <div className="bg-gradient-to-r from-brand-50 to-indigo-50 dark:from-brand-950/30 dark:to-indigo-950/30 border border-brand-200 dark:border-brand-800/40 rounded-2xl p-4 flex items-center justify-between">
+            <div className="bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/40 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-brand-700 dark:text-brand-300">
                   Score
                 </span>
                 <div className="text-xl font-bold text-brand-600 dark:text-brand-400">
-                  {calculateScore(artifact.data.questions || [])} / {artifact.data.questions?.length || 0}
+                  {calculateScore(questions)} / {questions.length}
                 </div>
               </div>
               <Award className="w-8 h-8 text-brand-500" />
             </div>
 
             {/* Questions List */}
-            {artifact.data.questions?.map((q: any, qIdx: number) => {
+            {questions.map((q, qIdx) => {
               const isChecked = checkedAnswers[qIdx];
               const isCorrect = selectedAnswers[qIdx] === q.correctOptionIndex;
 
               return (
                 <div
                   key={q.id || qIdx}
-                  className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-4 space-y-3 shadow-2xs"
+                  className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-4 space-y-3 shadow-2xs"
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-dark-muted">
-                    <span>Question {qIdx + 1} of {artifact.data.questions.length}</span>
+                    <span>Question {qIdx + 1} of {questions.length}</span>
                     {isChecked && (
                       <span className={isCorrect ? 'text-emerald-600 font-semibold' : 'text-red-500 font-semibold'}>
                         {isCorrect ? 'Correct' : 'Incorrect'}
@@ -193,11 +211,11 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
               <div className="p-3 bg-brand-50/60 dark:bg-brand-950/20 border border-brand-100 dark:border-brand-800/40 rounded-xl">
                 <span className="font-bold text-brand-700 dark:text-brand-300">Unit Overview:</span>
                 <p className="mt-1 text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {artifact.data.overview}
+                  {overview}
                 </p>
               </div>
 
-              {artifact.data.keyTheorems?.map((thm: any, idx: number) => (
+              {keyTheorems.map((thm, idx) => (
                 <div
                   key={idx}
                   className="p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl space-y-1.5"
@@ -217,23 +235,23 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
         {/* Video Explainer Animation View */}
         {artifact.type === 'video_explainer' && (
           <div className="space-y-4">
-            <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-6 text-white text-center shadow-lg overflow-hidden">
-              <div className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-brand-600 text-[10px] font-mono font-medium">
-                Step {videoStep + 1} of {(artifact.data.steps || []).length}
+            <div className="relative aspect-video rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-6 text-white text-center shadow-lg overflow-hidden">
+              <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-brand-600 text-[10px] font-mono font-medium">
+                Step {videoStep + 1} of {steps.length}
               </div>
 
               <div className="space-y-3 max-w-sm animate-fade-in">
                 <h3 className="text-sm font-semibold text-brand-300">
-                  {artifact.data.steps?.[videoStep]?.title || 'Step derivation'}
+                  {steps[videoStep]?.title || 'Step derivation'}
                 </h3>
                 <div className="text-base font-mono py-2 bg-slate-800/80 rounded-xl px-4 border border-slate-700">
                   <MathView
-                    content={artifact.data.steps?.[videoStep]?.latex || artifact.data.steps?.[videoStep]?.title || ''}
+                    content={steps[videoStep]?.latex || steps[videoStep]?.title || ''}
                     displayMode={true}
                   />
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  {artifact.data.steps?.[videoStep]?.explanation}
+                  {steps[videoStep]?.explanation}
                 </p>
               </div>
             </div>
@@ -252,7 +270,7 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
               <button
                 type="button"
                 onClick={() => {
-                  if (videoStep < (artifact.data.steps?.length || 1) - 1) {
+                  if (videoStep < (steps.length || 1) - 1) {
                     setVideoStep((prev) => prev + 1);
                   } else {
                     setVideoStep(0);
@@ -260,7 +278,7 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
                 }}
                 className="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-2xs"
               >
-                {videoStep < (artifact.data.steps?.length || 1) - 1 ? (
+                {videoStep < (steps.length || 1) - 1 ? (
                   <>
                     <Play className="w-3.5 h-3.5" />
                     <span>Next Step</span>
@@ -275,8 +293,8 @@ export const ArtifactDrawer: React.FC<ArtifactDrawerProps> = ({ artifact, onClos
 
               <button
                 type="button"
-                onClick={() => setVideoStep((prev) => Math.min((artifact.data.steps?.length || 1) - 1, prev + 1))}
-                disabled={videoStep >= (artifact.data.steps?.length || 1) - 1}
+                onClick={() => setVideoStep((prev) => Math.min((steps.length || 1) - 1, prev + 1))}
+                disabled={videoStep >= (steps.length || 1) - 1}
                 className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border disabled:opacity-40"
               >
                 Next

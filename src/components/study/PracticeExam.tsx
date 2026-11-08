@@ -87,7 +87,7 @@ export const PracticeExam: React.FC = () => {
     const pct = Math.round((finalScore / questions.length) * 100);
 
     return (
-      <div className="max-w-2xl mx-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in">
         <div className="text-center space-y-2">
           <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <Award className="w-8 h-8" />
@@ -114,7 +114,7 @@ export const PracticeExam: React.FC = () => {
             return (
               <div
                 key={q.id}
-                className="p-4 rounded-2xl border border-gray-100 dark:border-dark-border/60 bg-gray-50/50 dark:bg-dark-surface/50 space-y-2 text-sm"
+                className="p-4 rounded-xl border border-gray-100 dark:border-dark-border/60 bg-gray-50/50 dark:bg-dark-surface/50 space-y-2 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
@@ -157,19 +157,19 @@ export const PracticeExam: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div className="max-w-2xl mx-auto bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-6 sm:p-8 shadow-xs space-y-6">
       {/* Top Header: Progress and Timer */}
       <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border/80 pb-4">
         <div>
-          <span className="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
+          <span className="text-xs text-brand-600 dark:text-brand-400">
             AP / College Level Diagnostic
           </span>
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
             Question {currentIdx + 1} of {questions.length}
           </h3>
         </div>
 
-        <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400 font-mono text-xs font-semibold">
+        <div className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 font-mono text-xs font-semibold">
           <Timer className="w-3.5 h-3.5" />
           <span>
             {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
@@ -179,7 +179,7 @@ export const PracticeExam: React.FC = () => {
 
       {/* Question Prompt */}
       <div className="space-y-3 py-2">
-        <MathView content={currentQ.question} className="text-base text-gray-900 dark:text-white font-medium" />
+        <MathView content={currentQ.question} className="font-serif text-lg text-gray-900 dark:text-white" />
       </div>
 
       {/* Answer Options */}
@@ -192,17 +192,17 @@ export const PracticeExam: React.FC = () => {
                 key={idx}
                 type="button"
                 onClick={() => handleSelectOption(idx)}
-                className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-sm text-left transition-all ${
+                className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm text-left transition-colors ${
                   isSelected
-                    ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/30 font-semibold text-brand-900 dark:text-brand-100'
+                    ? 'border-brand-600 bg-brand-50/50 dark:bg-brand-950/30 font-semibold text-brand-900 dark:text-brand-100'
                     : 'border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-surface text-gray-800 dark:text-gray-200'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    className={`w-6 h-6 rounded flex items-center justify-center font-mono text-xs font-bold ${
                       isSelected
-                        ? 'bg-brand-500 text-white'
+                        ? 'bg-brand-600 text-white'
                         : 'bg-gray-100 dark:bg-dark-surface text-gray-600 dark:text-dark-muted'
                     }`}
                   >

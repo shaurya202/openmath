@@ -52,7 +52,21 @@ export const MathView: React.FC<MathViewProps> = ({
 
     return segments.map((seg: ParsedMathSegment, idx: number) => {
       if (seg.type === 'text') {
-        return <span key={idx}>{seg.content}</span>;
+        const parts = seg.content.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <span key={idx}>
+            {parts.map((part, pIdx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return (
+                  <strong key={pIdx} className="font-semibold text-gray-900 dark:text-gray-100">
+                    {part.slice(2, -2)}
+                  </strong>
+                );
+              }
+              return part;
+            })}
+          </span>
+        );
       }
 
       try {
@@ -92,5 +106,5 @@ export const MathView: React.FC<MathViewProps> = ({
     });
   }, [content, displayMode]);
 
-  return <div className={`math-content select-text leading-relaxed ${className}`}>{renderedContent}</div>;
+  return <div className={`math-content select-text leading-relaxed whitespace-pre-wrap ${className}`}>{renderedContent}</div>;
 };

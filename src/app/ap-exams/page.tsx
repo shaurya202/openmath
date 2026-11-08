@@ -195,54 +195,51 @@ export default function APExamHubPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-in">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-brand-600 via-indigo-600 to-cyan-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-white/5 backdrop-blur-3xl transform skew-x-12 pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-semibold">
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Advanced Placement Mathematics</span>
+      {/* Editorial Monograph Header */}
+      <div className="border-b border-gray-200 dark:border-dark-border pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-2 max-w-2xl">
+          <div className="text-sm font-medium text-brand-600 dark:text-brand-400">
+            Advanced Placement Mathematics
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Course Syllabi & Practice
+          <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight">
+            Course units and practice exams
           </h1>
-          <p className="text-sm sm:text-base text-white/90 leading-relaxed">
-            Unit breakdowns, formula sheets, and practice exams for AP Calculus, Statistics, and Precalculus.
+          <p className="text-sm sm:text-base text-gray-600 dark:text-dark-muted leading-relaxed">
+            Key formulas and timed practice questions for AP Calculus, Statistics, and Precalculus.
           </p>
         </div>
-      </div>
 
-      {/* Course Selector Tabs */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-dark-border">
-        {[
-          { id: 'calc-bc', name: 'AP Calculus BC' },
-          { id: 'calc-ab', name: 'AP Calculus AB' },
-          { id: 'stats', name: 'AP Statistics' },
-          { id: 'precalc', name: 'AP Precalculus' },
-        ].map((course) => (
-          <button
-            key={course.id}
-            onClick={() => setActiveCourse(course.id as any)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeCourse === course.id
-                ? 'bg-brand-600 text-white shadow-xs'
-                : 'text-gray-600 dark:text-dark-muted hover:bg-gray-100 dark:hover:bg-dark-surface'
-            }`}
-          >
-            {course.name}
-          </button>
-        ))}
+        {/* Course Selector Tabs */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0">
+          {([
+            { id: 'calc-bc', name: 'AP Calculus BC' },
+            { id: 'calc-ab', name: 'AP Calculus AB' },
+            { id: 'stats', name: 'AP Statistics' },
+            { id: 'precalc', name: 'AP Precalculus' },
+          ] as const).map((course) => (
+            <button
+              key={course.id}
+              onClick={() => setActiveCourse(course.id)}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap border ${
+                activeCourse === course.id
+                  ? 'bg-brand-600 text-white border-brand-700 dark:border-brand-500'
+                  : 'bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              {course.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Units Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-            <BookOpen className="w-5 h-5 text-brand-600" />
-            <span>Curriculum Units & Practice Exams</span>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Units and practice exams
           </h2>
-          <span className="text-xs text-gray-500 font-mono">
-            College Board Aligned
+          <span className="text-xs text-gray-500 dark:text-dark-muted">
+            Aligned to the College Board rubric
           </span>
         </div>
 
@@ -250,19 +247,19 @@ export default function APExamHubPage() {
           {AP_CALCULUS_BC_UNITS.map((unit) => (
             <div
               key={unit.number}
-              className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-5 shadow-xs hover:border-brand-300 dark:hover:border-brand-700 transition-all flex flex-col justify-between space-y-4"
+              className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg p-5 hover:border-brand-500/60 dark:hover:border-brand-500/60 transition-colors flex flex-col justify-between space-y-4"
             >
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold font-mono px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border/80 pb-2">
+                  <span className="text-xs font-mono font-semibold text-brand-700 dark:text-brand-300">
                     Unit {unit.number}
                   </span>
-                  <span className="text-[11px] font-medium text-gray-400">
+                  <span className="text-[11px] font-mono text-gray-400 dark:text-dark-muted">
                     {unit.weight}
                   </span>
                 </div>
 
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                <h3 className="font-serif text-lg font-semibold text-gray-900 dark:text-white pt-1">
                   {unit.title}
                 </h3>
 
@@ -272,11 +269,11 @@ export default function APExamHubPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center space-x-2 pt-2 border-t border-gray-100 dark:border-dark-border/60">
+              <div className="flex items-center space-x-2 pt-3 border-t border-gray-100 dark:border-dark-border/60">
                 <button
                   type="button"
                   onClick={() => openUnitPracticeTest(unit)}
-                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-2xs transition-colors"
+                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors"
                 >
                   <Clock className="w-3.5 h-3.5" />
                   <span>Practice Exam</span>
@@ -285,7 +282,7 @@ export default function APExamHubPage() {
                 <button
                   type="button"
                   onClick={() => openUnitReview(unit)}
-                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-dark-surface/80 text-gray-700 dark:text-gray-200 text-xs font-semibold transition-colors"
+                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-dark-surface dark:hover:bg-dark-border text-gray-700 dark:text-gray-200 text-xs font-medium transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Key Formulas</span>

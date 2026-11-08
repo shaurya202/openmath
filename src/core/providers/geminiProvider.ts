@@ -1,25 +1,5 @@
-import { IMathProvider, ProviderSolveRequest } from './types';
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from './types';
 import { MathSolution } from '@/types';
-import { extractGraphableFunctions } from '../math/latex';
-
-const SYSTEM_PROMPT = `You are OpenMath, an expert AI mathematics tutor and problem solver.
-When solving problems:
-1. Always formulate expressions in standard LaTeX:
-   - Inline equations: wrap in single dollar signs $...$
-   - Display equations: wrap in double dollar signs $$...$$
-2. Provide structured step-by-step reasoning.
-3. Conclude with the final answer in a LaTeX box: \\boxed{answer}.
-4. Return your response as valid JSON matching this schema:
-{
-  "interpretation": "Plain text with LaTeX summarizing the problem",
-  "steps": [
-    { "stepNumber": 1, "title": "Step Title", "latex": "LaTeX formula if applicable", "explanation": "Detailed explanation" }
-  ],
-  "boxedAnswer": "Final answer without the \\boxed wrapper",
-  "graphableFunctions": ["x^2 - 4"],
-  "suggestedFollowUps": ["Follow up question 1", "Follow up question 2"]
-}
-`;
 
 export class GeminiProvider implements IMathProvider {
   readonly name = 'Google Gemini (Multimodal)';
@@ -38,7 +18,10 @@ export class GeminiProvider implements IMathProvider {
       throw new Error('Gemini API key is not configured');
     }
 
-    const parts: any[] = [];
+    const parts: Array<
+      | { inlineData: { mimeType: string; data: string } }
+      | { text: string }
+    > = [];
 
     // Multimodal image support
     if (request.imageBase64 && request.imageMimeType) {
@@ -62,10 +45,12 @@ export class GeminiProvider implements IMathProvider {
         `https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`
       );
       if (listRes.ok) {
-        const listData = await listRes.json();
+        const listData = (await listRes.json()) as {
+          models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+        };
         candidateModels = (listData.models || [])
-          .filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'))
-          .map((m: any) => (m.name || '').replace(/^models\//, ''))
+          .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+          .map((m) => (m.name || '').replace(/^models\//, ''))
           .filter(Boolean);
       }
     } catch {
@@ -86,10 +71,9 @@ export class GeminiProvider implements IMathProvider {
           body: JSON.stringify({
             contents: [{ role: 'user', parts }],
             systemInstruction: {
-              parts: [{ text: SYSTEM_PROMPT }],
+              parts: [{ text: MATH_SYSTEM_PROMPT }],
             },
             generationConfig: {
-              responseMimeType: 'application/json',
               temperature: 0.1,
             },
           }),
@@ -104,48 +88,12 @@ export class GeminiProvider implements IMathProvider {
     }
 
     const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-
-    try {
-      const parsed = JSON.parse(rawText);
-      return {
-        id: `gemini-${Date.now()}`,
-        query: request.query,
-        interpretation: parsed.interpretation || request.query,
-        steps: parsed.steps || [],
-        boxedAnswer: parsed.boxedAnswer || 'N/A',
-        graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(rawText),
-        suggestedFollowUps: parsed.suggestedFollowUps || [],
-        confidence: 0.98,
-        timestamp: Date.now(),
-      };
-    } catch {
-      return {
-        id: `gemini-raw-${Date.now()}`,
-        query: request.query,
-        interpretation: request.query,
-        steps: [
-          {
-            stepNumber: 1,
-            title: 'Solution',
-            explanation: rawText,
-          },
-        ],
-        boxedAnswer: 'See steps above',
-        confidence: 0.9,
-        timestamp: Date.now(),
-      };
-    }
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return parseSolutionResponse('gemini', rawText, request.query);
   }
 
   async *solveStream(request: ProviderSolveRequest): AsyncIterable<string> {
     const solution = await this.solve(request);
-    yield `### Problem\n${solution.interpretation}\n\n`;
-    for (const step of solution.steps) {
-      yield `\n**Step ${step.stepNumber}: ${step.title}**\n`;
-      if (step.latex) yield `$$${step.latex}$$\n`;
-      yield `${step.explanation}\n`;
-    }
-    yield `\n### Final Answer\n$$\\boxed{${solution.boxedAnswer}}$$\n`;
+    yield solution.content || '';
   }
 }

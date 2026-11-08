@@ -83,7 +83,7 @@ export const FloatingCalculator: React.FC<FloatingCalculatorProps> = ({
   ];
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 w-72 sm:w-80 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-4 animate-fade-in text-gray-900 dark:text-white">
+    <div className="fixed bottom-24 right-6 z-50 w-72 sm:w-80 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-2xl p-4 animate-fade-in text-gray-900 dark:text-white">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 dark:border-dark-border/80">
         <div className="flex items-center space-x-1.5 text-xs font-bold text-gray-700 dark:text-gray-200">
@@ -138,7 +138,7 @@ export const FloatingCalculator: React.FC<FloatingCalculatorProps> = ({
                   : isDEL
                   ? 'bg-gray-100 dark:bg-dark-surface text-gray-700 dark:text-gray-300 font-semibold'
                   : isOp
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold'
+                  ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 font-semibold'
                   : 'bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border/60 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-surface'
               }`}
             >

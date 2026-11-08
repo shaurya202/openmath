@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📐 OpenMath
+# OpenMath
 
 ### The Modern Open-Source AI Math Solver, Homework Assistant & Graphing Calculator
 
@@ -13,71 +13,71 @@
 
 *A community-first, privacy-respecting alternative to proprietary platforms like MathGPT, Photomath, and Symbolab.*
 
-[Features](#-key-features) • [Quickstart](#-quickstart) • [Docker Deployment](#-docker-deployment) • [Architecture](#-architecture) • [Contributing](#-contributing)
+[Features](#key-features) · [Quickstart](#quickstart) · [Docker Deployment](#docker-deployment) · [Testing](#testing)
 
 ---
 
 </div>
 
-## 🌟 Why OpenMath?
+## Why OpenMath?
 
-Most AI math applications lock step-by-step solutions behind aggressive subscription paywalls, sell student data, or fail when network connectivity drops.
+Most AI math applications lock step-by-step solutions behind subscription paywalls, sell student data, or fail when network connectivity drops.
 
-**OpenMath** is engineered from the ground up to be:
-1. **100% Free & Open-Source:** No paywalls, subscriptions, or "parent-pay" barriers.
-2. **Zero-Key Offline Ready:** Works immediately out of the box with zero mandatory API keys, using an offline symbolic evaluation engine and benchmark corpus.
-3. **Pluggable Multi-Model AI:** Add a free Google Gemini key or your favorite OpenAI/Ollama/DeepSeek model for multimodal reasoning and handwriting recognition.
-4. **Interactive Math Ergonomics:** Includes a cursor-aware virtual math keyboard, high-speed KaTeX rendering, and built-in 2D Cartesian graphing.
+OpenMath runs locally first:
+1. Free and open-source with no paywalls or subscriptions.
+2. Works offline out of the box with zero mandatory API keys, using a local symbolic evaluation engine and benchmark corpus.
+3. Supports pluggable multi-model AI (publik, Google Gemini, OpenAI, Groq, Ollama) for multimodal reasoning and handwriting recognition.
+4. Includes a cursor-aware virtual math keyboard, KaTeX rendering, and 2D Cartesian graphing.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 | Feature | OpenMath (Open-Source) | MathGPT / Proprietary Apps |
 |---|---|---|
-| **Step-by-Step Derivation** | ✅ Full step breakdown with explanations | ⚠️ Gated behind $19.99/mo |
-| **Photo / OCR Solver** | ✅ Client-side pre-processing + vision | ⚠️ Limited free daily credits |
-| **Formula Keyboard** | ✅ Categorized LaTeX palette (Popular, Trig, Calc, Greek) | ✅ Available |
-| **Graphing Calculator** | ✅ Dual engine: Native Canvas plotter + GeoGebra embed | ⚠️ Iframe only |
-| **Study Suite** | ✅ SM-2 Spaced Repetition Flashcards + Timed Exams | ⚠️ Paywalled |
-| **Homework Auto-Grader**| ✅ 4-point AP-style rubric analysis & feedback | ⚠️ Paywalled |
-| **Offline Self-Hosting**| ✅ 100% functional with zero API keys required | ❌ Cloud proprietary only |
+| **Step-by-Step Derivation** | Full step breakdown with explanations | Gated behind $19.99/mo |
+| **Photo / OCR Solver** | Client-side pre-processing + vision | Limited free daily credits |
+| **Formula Keyboard** | Categorized LaTeX palette (Popular, Trig, Calc, Greek) | Available |
+| **Graphing Calculator** | Dual engine: Native Canvas plotter + GeoGebra embed | Iframe only |
+| **Study Suite** | SM-2 Spaced Repetition Flashcards + Timed Exams | Paywalled |
+| **Homework Auto-Grader**| 4-point AP-style rubric analysis & feedback | Paywalled |
+| **Offline Self-Hosting**| 100% functional with zero API keys required | Cloud proprietary only |
 
 ---
 
-## 📸 Core Modules
+## Core Modules
 
-### 1. 💬 AI Homework Solver
+### 1. AI Homework Solver
 - Step-by-step mathematical reasoning with formatted LaTeX display math ($$...$$) and inline math ($...$).
 - Problem formalization, intermediate derivations, and final answers highlighted in $\\boxed{\\text{canonical format}}$.
-- **"📈 Plot in Grapher"** action chip automatically detects equations and passes them into the graphing calculator.
+- "Plot in Grapher" action chip detects equations and passes them into the graphing calculator.
 
-### 2. ⌨️ Virtual Math Keyboard & Formula Palette
+### 2. Virtual Math Keyboard & Formula Palette
 - Categorized palettes:
-  - **Popular:** $+$, $-$, $\times$, $\div$, $\frac{a}{b}$, $x^2$, $x^n$, $\sqrt{x}$, $\pi$, $\infty$, $\pm$, $\le$, $\ge$
-  - **Algebra:** $x$, $y$, $z$, $|x|$, $\log$, $\ln$, $x_1$, $f(x)$, $n!$, $\binom{n}{k}$
-  - **Calculus:** $\frac{d}{dx}$, $\int$, $\int_a^b$, $\lim_{x \to 0}$, $\sum$, $\partial$, $\nabla$
-  - **Trigonometry:** $\sin$, $\cos$, $\tan$, $\arcsin$, $\arccos$, $\arctan$, $\sec$, $\theta$
-  - **Greek & Logic:** $\alpha, \beta, \gamma, \delta, \lambda, \sigma, \omega, \Delta, \in, \cup, \cap, \implies$
+  - Popular: $+$, $-$, $\times$, $\div$, $\frac{a}{b}$, $x^2$, $x^n$, $\sqrt{x}$, $\pi$, $\infty$, $\pm$, $\le$, $\ge$
+  - Algebra: $x$, $y$, $z$, $|x|$, $\log$, $\ln$, $x_1$, $f(x)$, $n!$, $\binom{n}{k}$
+  - Calculus: $\frac{d}{dx}$, $\int$, $\int_a^b$, $\lim_{x \to 0}$, $\sum$, $\partial$, $\nabla$
+  - Trigonometry: $\sin$, $\cos$, $\tan$, $\arcsin$, $\arccos$, $\arctan$, $\sec$, $\theta$
+  - Greek & Logic: $\alpha, \beta, \gamma, \delta, \lambda, \sigma, \omega, \Delta, \in, \cup, \cap, \implies$
 - Cursor-aware insertion with auto-selection of template parameters.
 
-### 3. 📈 Interactive 2D Graphing Calculator
-- High-performance Cartesian coordinate engine rendered on HTML5 Canvas.
+### 3. Interactive 2D Graphing Calculator
+- Cartesian coordinate engine rendered on HTML5 Canvas.
 - Real-time function stack: plot polynomials, trigonometric waves, exponentials, and logarithms.
 - Live crosshair coordinate readout: $(x, y)$.
-- Zoom, pan, and reset controls with smooth mouse/touch interaction.
-- **GeoGebra Embed Toggle:** 1-click switch to full GeoGebra 2D/3D applet for advanced geometric constructions.
+- Zoom, pan, and reset controls with mouse and touch interaction.
+- GeoGebra embed toggle: 1-click switch to the GeoGebra 2D/3D applet for geometric constructions.
 
-### 4. 🧠 Spaced Repetition Flashcards & Study Suite
-- Built-in SuperMemo **SM-2 algorithm** for optimal long-term memory retention.
-- 3D interactive flip cards with question prompts and mathematical proofs.
+### 4. Spaced Repetition Flashcards & Study Suite
+- Built-in SuperMemo SM-2 algorithm for review scheduling.
+- Interactive flip cards with question prompts and mathematical proofs.
 - Rate recall difficulty (*Again, Hard, Good, Easy*) to calculate dynamic review intervals.
 
-### 5. ⏱️ AP & College Diagnostic Exams
+### 5. AP & College Diagnostic Exams
 - Timed 10-minute diagnostic tests featuring Multiple Choice and Free Response questions.
-- Instant automated scoring, confetti celebration, and step-by-step solution keys.
+- Instant automated scoring and step-by-step solution keys.
 
-### 6. 📝 FRQ & Assignment Auto-Grader
+### 6. FRQ & Assignment Auto-Grader
 - Rubric-based evaluation scoring student derivations across 4 dimensions:
   1. Conceptual Setup & Formula Selection (1 pt)
   2. Intermediate Algebraic / Calculus Derivation (1 pt)
@@ -86,7 +86,7 @@ Most AI math applications lock step-by-step solutions behind aggressive subscrip
 
 ---
 
-## ⚡ Quickstart
+## Quickstart
 
 ### 1. Prerequisites
 - [Node.js](https://nodejs.org/) v20 or later
@@ -107,7 +107,7 @@ Navigate to **http://localhost:3000** in your browser.
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 Deploy OpenMath with a single command using Docker:
 
@@ -118,11 +118,9 @@ The application will be live at `http://localhost:3000`.
 
 ---
 
-## ⚙️ Environment Variables (Optional)
+## Environment Variables (Optional)
 
-OpenMath works **out of the box with zero keys**. To enable cloud AI reasoning and vision OCR:
-
-Create a `.env.local` file (copy from `.env.example`):
+OpenMath works out of the box with zero keys. To enable cloud AI reasoning and vision OCR, create a `.env.local` file (copy from `.env.example`):
 
 ```bash
 # Optional: Google Gemini (Multimodal & Fast)
@@ -136,9 +134,9 @@ OPENAI_MODEL=gpt-4o
 
 ---
 
-## 🧪 Testing
+## Testing
 
-OpenMath includes a comprehensive test suite covering mathematical normalization, SM-2 algorithms, and offline providers:
+OpenMath includes a test suite covering mathematical normalization, SM-2 algorithms, and offline providers:
 
 ```bash
 # Run unit tests
@@ -150,12 +148,6 @@ pnpm build
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
----
-
-<div align="center">
-Built with ❤️ for students, educators, and math lovers everywhere.
-</div>

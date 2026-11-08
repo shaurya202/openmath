@@ -1,22 +1,5 @@
-import { IMathProvider, ProviderSolveRequest } from './types';
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from './types';
 import { MathSolution } from '@/types';
-import { extractGraphableFunctions } from '../math/latex';
-
-const SYSTEM_PROMPT = `You are OpenMath, a world-class AI mathematics tutor and solver.
-Format all math output using LaTeX:
-- Inline: $formula$
-- Display: $$formula$$
-Provide a structured step-by-step solution, followed by the final answer enclosed in \\boxed{answer}.
-Format as JSON:
-{
-  "interpretation": "Summary of problem with LaTeX",
-  "steps": [
-    { "stepNumber": 1, "title": "Step Name", "latex": "equation", "explanation": "text" }
-  ],
-  "boxedAnswer": "result",
-  "graphableFunctions": ["x^2"],
-  "suggestedFollowUps": ["Follow-up question"]
-}`;
 
 export class OpenAIProvider implements IMathProvider {
   readonly name = 'OpenAI Compatible (GPT-4o/Groq/Ollama)';
@@ -37,7 +20,7 @@ export class OpenAIProvider implements IMathProvider {
       throw new Error('OpenAI API key is not configured');
     }
 
-    const messages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }];
+    const messages: Array<{ role: string; content: unknown }> = [{ role: 'system', content: MATH_SYSTEM_PROMPT }];
 
     if (request.imageBase64 && request.imageMimeType) {
       messages.push({
@@ -65,7 +48,6 @@ export class OpenAIProvider implements IMathProvider {
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages,
-        response_format: { type: 'json_object' },
         temperature: 0.1,
       }),
     });
@@ -76,41 +58,12 @@ export class OpenAIProvider implements IMathProvider {
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        id: `openai-${Date.now()}`,
-        query: request.query,
-        interpretation: parsed.interpretation || request.query,
-        steps: parsed.steps || [],
-        boxedAnswer: parsed.boxedAnswer || 'N/A',
-        graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-        suggestedFollowUps: parsed.suggestedFollowUps || [],
-        confidence: 0.99,
-        timestamp: Date.now(),
-      };
-    } catch {
-      return {
-        id: `openai-raw-${Date.now()}`,
-        query: request.query,
-        interpretation: request.query,
-        steps: [{ stepNumber: 1, title: 'Solution', explanation: content }],
-        boxedAnswer: 'N/A',
-        timestamp: Date.now(),
-      };
-    }
+    const content = data.choices?.[0]?.message?.content || '';
+    return parseSolutionResponse('openai', content, request.query);
   }
 
   async *solveStream(request: ProviderSolveRequest): AsyncIterable<string> {
     const solution = await this.solve(request);
-    yield `### Interpretation\n${solution.interpretation}\n\n`;
-    for (const step of solution.steps) {
-      yield `\n**Step ${step.stepNumber}: ${step.title}**\n`;
-      if (step.latex) yield `$$${step.latex}$$\n`;
-      yield `${step.explanation}\n`;
-    }
-    yield `\n### Final Answer\n$$\\boxed{${solution.boxedAnswer}}$$\n`;
+    yield solution.content || '';
   }
 }
