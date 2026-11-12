@@ -9,6 +9,7 @@ import {
   appToken,
   APP_SLUG,
   APP_VERSION,
+  startTelemetry,
 } from '@/core/providers/publik';
 
 export const runtime = 'nodejs';
@@ -16,6 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    startTelemetry();
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
     const cred = readCredential();
     const token = appToken();

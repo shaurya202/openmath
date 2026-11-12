@@ -6,13 +6,15 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { arch, homedir, hostname, platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from "./types";
+import crypto from "node:crypto";
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse, stripEmojis } from "./types";
 import { MathSolution } from "@/types";
 import { extractGraphableFunctions } from "../math/latex";
 
 export const APP_SLUG = "openmath";
 export const APP_VERSION = "1.0.0";
-export const DEFAULT_BASE_URL = "https://publikhq.com/api/v1";
+const ORIGIN = process.env.PUBLIK_ORIGIN || "https://publikhq.com";
+export const DEFAULT_BASE_URL = `${ORIGIN}/api/v1`;
 /** Ask for a tier, never a vendor model name. */
 export const MODELS = { fast: "publik-fast", balanced: "publik-balanced", smart: "publik-smart" } as const;
 /** Show this and get a yes BEFORE provision(). */
@@ -58,8 +60,8 @@ export function appToken(): string {
   return "";
 }
 
-/** ~/Library/Application Support/publik/apps/<slug>.json, %LOCALAPPDATA%\publik\apps\<slug>.json, ~/.config/publik/apps/<slug>.json */
-export function credentialPath(): string {
+/** ~/Library/Application Support/publik, %LOCALAPPDATA%\publik, ~/.config/publik */
+export function publikDir(): string {
   const os = platform();
   let base: string;
   if (os === "darwin") {
@@ -81,7 +83,11 @@ export function credentialPath(): string {
       }
     }
   }
-  return join(base, "publik", "apps", `${APP_SLUG}.json`);
+  return join(base, "publik");
+}
+
+export function credentialPath(): string {
+  return join(publikDir(), "apps", `${APP_SLUG}.json`);
 }
 
 export function readCredential(): PublikCredential | null {
@@ -144,7 +150,7 @@ export async function provision(): Promise<PublikCredential> {
   const prior = readCredential();
   let installId = prior?.install_id ?? crypto.randomUUID();
   for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(`${DEFAULT_BASE_URL}/installs`, {
+    const res = await fetch(`${ORIGIN}/api/v1/installs`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -173,14 +179,139 @@ export async function provision(): Promise<PublikCredential> {
   throw new Error("publik API could not set up this computer. Use your own key for now.");
 }
 
-/** Builder check, run by the BUILT app: start it with PUBLIK_SELF_TEST=1, print this line, exit.
- *  It provisions for real; the builder who runs it is the consent. */
+export interface Wallet {
+  claim_state: "anonymous" | "claimed";
+  claim_url: string | null;
+  account: { handle: string | null } | null;
+  plan: { kind: "none" | "plan" | "pack"; label: string | null };
+  balance_micros: number;
+  top_up_url: string;
+  linked_at: string | null;
+}
+
+/** GET /api/v1/wallet. */
+export async function readWallet(key: string): Promise<{ status: number; wallet: Wallet | null; message: string | null }> {
+  const res = await fetch(`${ORIGIN}/api/v1/wallet`, {
+    headers: { authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  const b = (await res.json().catch(() => ({}))) as Record<string, any>;
+  if (!res.ok || typeof b.claim_state !== "string") {
+    return { status: res.status, wallet: null, message: b.error?.message ?? null };
+  }
+  return {
+    status: res.status,
+    message: null,
+    wallet: {
+      ...b,
+      account: b.account ?? null,
+      plan: b.plan ?? { kind: "none", label: null },
+      balance_micros: b.balance_micros ?? 0,
+    } as Wallet,
+  };
+}
+
+/** Builder check, run by the BUILT app: start it with PUBLIK_SELF_TEST=1, print this line, exit. */
 export async function selfTest(): Promise<string> {
   try {
-    return `publik self-test: ok ${APP_SLUG} ${APP_VERSION} (install ${(await provision()).install_id.slice(0, 8)})`;
+    const cred = await provision();
+    const r = await readWallet(cred.key);
+    if (!r.wallet) throw new Error(r.message ?? `GET /wallet answered ${r.status}`);
+    return `publik self-test: ok ${APP_SLUG} ${APP_VERSION}`;
   } catch (e) {
-    return `publik self-test: failed: ${e instanceof Error ? e.message : String(e)}`;
+    const offline = e instanceof TypeError || (e instanceof Error && /abort|timeout/i.test(e.name));
+    return `publik self-test: failed: ${offline ? "publik is not reachable. Check your connection." : e instanceof Error ? e.message : String(e)}`;
   }
+}
+
+// ---------- usage counting: /skills/telemetry.md sections 3-5 ----------
+let timer: ReturnType<typeof setInterval> | null = null;
+let installIdOnce: string | null = null;
+
+export function usageOff(): boolean {
+  const dnt = (process.env.DO_NOT_TRACK ?? "").trim().toLowerCase();
+  if (dnt !== "" && dnt !== "0" && dnt !== "false") return true;
+  if (["0", "false", "off"].includes((process.env.PUBLIK_TELEMETRY ?? "").trim().toLowerCase())) return true;
+  try {
+    return JSON.parse(readFileSync(join(publikDir(), "consent.json"), "utf8")).usage === false;
+  } catch {
+    return false;
+  }
+}
+
+/** One random UUID per computer account, shared by every publik app, in <publik dir>/telemetry.json (mode 0600). */
+export function telemetryInstallId(): string {
+  const file = join(publikDir(), "telemetry.json");
+  const saved = () => {
+    try {
+      const id = String(JSON.parse(readFileSync(file, "utf8")).install_id).toLowerCase();
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) ? id : null;
+    } catch {
+      return null;
+    }
+  };
+  if ((installIdOnce ??= saved())) return installIdOnce;
+  const fresh = crypto.randomUUID();
+  try {
+    mkdirSync(publikDir(), { recursive: true, mode: 0o700 });
+    writeFileSync(
+      file,
+      JSON.stringify({ install_id: fresh, created_at: new Date().toISOString().replace(/\.\d+Z$/, "Z") }) + "\n",
+      { flag: "wx", mode: 0o600 }
+    );
+    return (installIdOnce = fresh);
+  } catch {
+    return (installIdOnce = saved() ?? fresh);
+  }
+}
+
+export async function sendTelemetryEvent(event: "app_opened" | "active_session"): Promise<void> {
+  const say = (result: unknown) => {
+    if (process.env.PUBLIK_TELEMETRY_DEBUG === "1") {
+      process.stderr.write(`publik-telemetry: ${event} -> ${result}\n`);
+    }
+  };
+  try {
+    const osName = platform() === "darwin" ? "macos" : platform() === "win32" ? "windows" : platform() === "linux" ? "linux" : null;
+    if (!osName) return;
+    if (usageOff()) return say("off (opt-out)");
+    const key = process.env.PUBLIK_API_KEY || readCredential()?.key;
+    const body: Record<string, any> = {
+      v: 1,
+      app: APP_SLUG,
+      install_id: telemetryInstallId(),
+      event,
+      app_version: APP_VERSION.replace(/^v/i, ""),
+      os: osName,
+      ...(arch() === "arm64" || arch() === "x64" ? { arch: arch() } : {}),
+    };
+    const res = await fetch(process.env.PUBLIK_TELEMETRY_URL || `${ORIGIN}/api/v1/telemetry`, {
+      method: "POST",
+      signal: AbortSignal.timeout(5_000),
+      headers: {
+        "content-type": "application/json",
+        ...(key?.startsWith("pk_") ? { authorization: `Bearer ${key}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    say(res.status);
+  } catch (e) {
+    say(e instanceof Error ? e.name : "error");
+  }
+}
+
+/** app_opened on launch, active_session every 30 minutes; never fails the app, never blocks. */
+export function startTelemetry(): void {
+  if (timer) return;
+  const s = Number(process.env.PUBLIK_TELEMETRY_INTERVAL_SECONDS);
+  timer = setInterval(() => void sendTelemetryEvent("active_session"), (s >= 1 && s <= 86_400 ? s : 1_800) * 1000);
+  timer.unref?.();
+  void sendTelemetryEvent("app_opened");
+}
+
+export function stopTelemetry(): void {
+  if (timer) clearInterval(timer);
+  timer = null;
 }
 
 /** OpenAI-compatible client config: new OpenAI(clientConfig(p)). */
@@ -192,7 +323,7 @@ export function clientConfig(p: Extract<Provider, { kind: "own" | "publik" }>) {
 export function balanceLine(micros: number | null | undefined, claimState: "anonymous" | "claimed" = "anonymous"): string {
   if (micros == null) return "";
   const dollars = `$${(micros / 1_000_000).toFixed(2)}`;
-  return micros === 0 && claimState === "anonymous" ? `${dollars} · link this computer for $0.05 of free use` : `${dollars} of publik balance`;
+  return micros === 0 && claimState === "anonymous" ? `${dollars} · link this computer for $0.05 of free publik API use` : `${dollars} of publik balance`;
 }
 
 /** A 402 renders its message plus exactly ONE link: this one. */
@@ -327,7 +458,7 @@ export class PublikProvider implements IMathProvider {
         try {
           const parsed = JSON.parse(jsonStr);
           const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) yield delta;
+          if (delta) yield stripEmojis(delta);
         } catch {
           // Ignore SSE parse errors
         }

@@ -15,21 +15,38 @@ Tone & Voice Guidelines:
 5. Format math expressions in clean LaTeX:
    - Inline math: $formula$
    - Display/block math: $$formula$$
-6. Provide your complete response as natural markdown text. Do NOT output JSON.`;
+6. Provide your complete response as natural markdown text. Do NOT output JSON.
+7. Do NOT use emojis anywhere in your responses under any circumstances. Keep all explanations and output completely free of emojis.`;
+
+const EMOJI_REGEX = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff]|\p{Extended_Pictographic}|\p{Emoji_Presentation})/gu;
+
+export function stripEmojis(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(EMOJI_REGEX, (match) => {
+      const cp = match.codePointAt(0) || 0;
+      // Preserve standard mathematical operators, arrows, logic symbols, and Greek letters
+      if (cp >= 0x2190 && cp <= 0x22ff) return match;
+      if (cp >= 0x27f0 && cp <= 0x27ff) return match;
+      if (cp >= 0x0370 && cp <= 0x03ff) return match;
+      return '';
+    })
+    .replace(/[ \t]{2,}/g, ' ');
+}
 
 export function parseSolutionResponse(prefix: string, rawText: string, query: string): MathSolution {
-  const trimmed = (rawText || '').trim();
+  const sanitized = stripEmojis(rawText || '').trim();
   // Handle JSON fallback if model returns JSON
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+  if (sanitized.startsWith('{') && sanitized.endsWith('}')) {
     try {
-      const parsed = JSON.parse(trimmed);
-      let content = parsed.interpretation || '';
+      const parsed = JSON.parse(sanitized);
+      let content = stripEmojis(parsed.interpretation || '');
       if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
         const stepsText = parsed.steps
           .map((s: { title?: string; stepNumber?: number; latex?: string; explanation?: string }) => {
-            const title = s.title ? `**Step ${s.stepNumber || ''}: ${s.title}**\n` : '';
+            const title = s.title ? `**Step ${s.stepNumber || ''}: ${stripEmojis(s.title)}**\n` : '';
             const latex = s.latex ? `$$${s.latex}$$\n` : '';
-            const explanation = s.explanation || '';
+            const explanation = s.explanation ? stripEmojis(s.explanation) : '';
             return `${title}${latex}${explanation}`.trim();
           })
           .filter(Boolean)
@@ -37,17 +54,19 @@ export function parseSolutionResponse(prefix: string, rawText: string, query: st
         content = content ? `${content}\n\n${stepsText}` : stepsText;
       }
       if (parsed.boxedAnswer && parsed.boxedAnswer !== 'N/A' && !/ready/i.test(parsed.boxedAnswer)) {
-        content += `\n\n**Final Answer:**\n$$\\boxed{${parsed.boxedAnswer}}$$`;
+        content += `\n\n**Final Answer:**\n$$\\boxed{${stripEmojis(parsed.boxedAnswer)}}$$`;
       }
       return {
         id: `${prefix}-${Date.now()}`,
         query,
-        content: content || trimmed,
-        interpretation: parsed.interpretation,
+        content: content || sanitized,
+        interpretation: parsed.interpretation ? stripEmojis(parsed.interpretation) : undefined,
         steps: parsed.steps,
-        boxedAnswer: parsed.boxedAnswer,
+        boxedAnswer: parsed.boxedAnswer ? stripEmojis(parsed.boxedAnswer) : undefined,
         graphableFunctions: parsed.graphableFunctions || extractGraphableFunctions(content),
-        suggestedFollowUps: parsed.suggestedFollowUps,
+        suggestedFollowUps: Array.isArray(parsed.suggestedFollowUps)
+          ? parsed.suggestedFollowUps.map((s: string) => stripEmojis(s))
+          : undefined,
         confidence: 0.99,
         timestamp: Date.now(),
       };
@@ -59,8 +78,8 @@ export function parseSolutionResponse(prefix: string, rawText: string, query: st
   return {
     id: `${prefix}-${Date.now()}`,
     query,
-    content: trimmed,
-    graphableFunctions: extractGraphableFunctions(trimmed),
+    content: sanitized,
+    graphableFunctions: extractGraphableFunctions(sanitized),
     confidence: 0.98,
     timestamp: Date.now(),
   };

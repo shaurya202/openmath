@@ -1,4 +1,4 @@
-import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse } from './types';
+import { IMathProvider, ProviderSolveRequest, MATH_SYSTEM_PROMPT, parseSolutionResponse, stripEmojis } from './types';
 import { MathSolution } from '@/types';
 
 export const DEFAULT_NIM_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
@@ -255,7 +255,7 @@ export class NvidiaNimProvider implements IMathProvider {
         try {
           const parsed = JSON.parse(jsonStr);
           const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) yield delta;
+          if (delta) yield stripEmojis(delta);
         } catch {
           // ignore stream parse errors
         }

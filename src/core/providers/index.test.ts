@@ -33,6 +33,16 @@ describe('parseSolutionResponse', () => {
     expect(sol.content).toContain('**Step 1: Subtract 2**');
     expect(sol.content).toContain('$$\\boxed{x = 3}$$');
   });
+
+  it('strips all emojis from responses while preserving math symbols', () => {
+    const raw = 'Hello! 😊 Let us solve $x^2 = 4$ 🚀 \\implies x = \\pm 2 👍';
+    const sol = parseSolutionResponse('publik', raw, 'solve x^2=4');
+
+    expect(sol.content).not.toContain('😊');
+    expect(sol.content).not.toContain('🚀');
+    expect(sol.content).not.toContain('👍');
+    expect(sol.content).toContain('Hello! Let us solve $x^2 = 4$ \\implies x = \\pm 2');
+  });
 });
 
 describe('getActiveMathProvider domain-based routing', () => {

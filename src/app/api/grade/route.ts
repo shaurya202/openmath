@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FRQGradingResult } from '@/types';
-import { getActiveMathProvider } from '@/core/providers';
+import { getActiveMathProvider, stripEmojis } from '@/core/providers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (provider.isAvailable()) {
       try {
         const prompt = `You are an encouraging, thoughtful human math teacher grading a student's free-response work.
-Speak directly to the student in a warm, constructive, human voice.
+Speak directly to the student in a warm, constructive, human voice. Do NOT use emojis anywhere in your response.
 
 Question: ${question}
 Expected Answer: ${correctAnswer || 'Standard mathematical derivation'}
@@ -49,11 +49,20 @@ Return ONLY valid JSON matching this schema:
           ? JSON.parse(rawJson)
           : null;
         if (parsed && typeof parsed.totalScore === 'number') {
+          const sanitizedBreakdown = Array.isArray(parsed.rubricBreakdown)
+            ? parsed.rubricBreakdown.map((r: { criterion: string; score: number; maxPoints: number; feedback: string }) => ({
+                ...r,
+                criterion: stripEmojis(r.criterion),
+                feedback: stripEmojis(r.feedback),
+              }))
+            : [];
           return NextResponse.json({
             success: true,
             result: {
               id: `grade-${Date.now()}`,
               ...parsed,
+              rubricBreakdown: sanitizedBreakdown,
+              overallFeedback: stripEmojis(parsed.overallFeedback || ''),
               correctedSolutionLatex: correctAnswer || res.boxedAnswer,
             },
           });
