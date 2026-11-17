@@ -10,6 +10,8 @@ import {
   startTelemetry,
   stopTelemetry,
   selfTest,
+  gateScreen,
+  USES_AI,
 } from './publik';
 
 describe('publik module', () => {
@@ -80,5 +82,21 @@ describe('publik module', () => {
   it('runs selfTest and returns expected formatted status', async () => {
     const result = await selfTest();
     expect(result).toMatch(/^publik self-test: (ok|failed:)/);
+  });
+
+  it('builds gate screens for sign_in, unreachable, and choose', () => {
+    expect(USES_AI).toBe(true);
+    expect(gateScreen('sign_in', null).buttons[0].action).toBe('sign_in');
+    expect(gateScreen('unreachable', null).body).toContain('publik is not reachable');
+    const chooseNoPlan = gateScreen('choose', {
+      claim_state: 'claimed',
+      claim_url: null,
+      account: { handle: 'alice' },
+      plan: { kind: 'none', label: null },
+      balance_micros: 0,
+      top_up_url: 'https://publikhq.com/top-up',
+      linked_at: null,
+    });
+    expect(chooseNoPlan.buttons.map((b) => b.action)).toEqual(['get_plan', 'own_key']);
   });
 });

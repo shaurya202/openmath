@@ -286,6 +286,21 @@ export const Navbar: React.FC = () => {
 
               <button
                 type="button"
+                onClick={async () => {
+                  await fetch('/api/publik/status', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ action: 'set_choice', choice: null }),
+                  });
+                  window.location.reload();
+                }}
+                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-dark-border text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-surface transition-colors"
+              >
+                Change AI choice
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowPublikModal(false)}
                 className="w-full px-4 py-2 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-dark-muted dark:hover:bg-dark-surface transition-colors"
               >

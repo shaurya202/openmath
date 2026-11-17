@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Newsreader, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/ui/Navbar';
+import { PublikGate } from '@/components/publik/PublikGate';
 
 const fontSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -47,8 +48,10 @@ export default function RootLayout({
       className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable}`}
     >
       <body className="font-sans antialiased selection:bg-brand-600 selection:text-white">
-        <Navbar />
-        <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
+        <PublikGate>
+          <Navbar />
+          <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
+        </PublikGate>
       </body>
     </html>
   );

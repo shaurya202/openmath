@@ -13,14 +13,19 @@ import { extractGraphableFunctions } from "../math/latex";
 
 export const APP_SLUG = "openmath";
 export const APP_VERSION = "1.0.0";
+/** false: the app calls no model. It still signs in and counts users; it skips the plan screen. */
+export const USES_AI = true;
 const ORIGIN = process.env.PUBLIK_ORIGIN || "https://publikhq.com";
 export const DEFAULT_BASE_URL = `${ORIGIN}/api/v1`;
-/** Ask for a tier, never a vendor model name. */
+/** Ask for a tier, or a vendor/model name from GET /api/v1/models; never a bare vendor model name. */
 export const MODELS = { fast: "publik-fast", balanced: "publik-balanced", smart: "publik-smart" } as const;
+const POLL_MS = 3_000, POLL_LIMIT_MS = 10 * 60_000;
 /** Show this and get a yes BEFORE provision(). */
 export const DISCLOSURE =
   "This app can use publik API for its AI features: no key to paste, priced per use in dollars from a publik balance that starts at $0.00. " +
   "Linking this computer to a publik account gives $0.05 of free use, once. Your prompts go through publik's servers to the model; you can switch to your own key at any time.";
+
+export type Choice = "publik" | "own_key";
 
 export interface PublikCredential {
   key: string;
@@ -31,6 +36,20 @@ export interface PublikCredential {
   add_credit_url: string | null;
   cost_sentence: string | null;
   balance_micros: number | null;
+  choice?: Choice | null;
+}
+
+export type GateAction = "sign_in" | "retry" | "get_plan" | "connect" | "own_key";
+export interface GateScreen {
+  id: "sign_in" | "unreachable" | "choose";
+  title: string;
+  body: string;
+  note: string | null;
+  buttons: { action: GateAction; label: string }[];
+}
+export interface GateUI {
+  show(screen: GateScreen, signal: AbortSignal): Promise<GateAction>;
+  openUrl(url: string): unknown;
 }
 
 export type Provider =
@@ -111,11 +130,11 @@ export function readCredential(): PublikCredential | null {
   return null;
 }
 
-export function writeCredential(c: PublikCredential): void {
+export function writeCredential(c: PublikCredential | null): void {
   const file = credentialPath();
   try {
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(c, null, 2), { mode: 0o600 });
+    writeFileSync(file, JSON.stringify(c ?? {}, null, 2), { mode: 0o600 });
     try {
       chmodSync(file, 0o600);
     } catch {
@@ -126,11 +145,17 @@ export function writeCredential(c: PublikCredential): void {
     try {
       const fallbackPath = join(tmpdir(), ".config", "publik", "apps", `${APP_SLUG}.json`);
       mkdirSync(dirname(fallbackPath), { recursive: true });
-      writeFileSync(fallbackPath, JSON.stringify(c, null, 2), { mode: 0o600 });
+      writeFileSync(fallbackPath, JSON.stringify(c ?? {}, null, 2), { mode: 0o600 });
     } catch {
       // In worst-case read-only environments, avoid unhandled ENOENT/EACCES
     }
   }
+}
+
+/** The person's answer to the plan screen. Settings call it to change the answer; null asks again at the next start. */
+export function setChoice(choice: Choice | null): void {
+  const c = readCredential();
+  if (c) writeCredential({ ...c, choice });
 }
 
 export function resolveProvider(userKey?: { baseURL: string; apiKey: string } | null): Provider {
@@ -168,6 +193,7 @@ export async function provision(): Promise<PublikCredential> {
         claim_url: body.claim_url ?? null, claim_state: body.claim_state ?? "anonymous",
         add_credit_url: body.wallet?.add_credit_url ?? null, cost_sentence: body.disclosure?.cost ?? null,
         balance_micros: body.balance_micros ?? null,
+        choice: prior?.choice ?? null,
       };
       writeCredential(c); // the key reaches disk before anything else sees it
       return c;
@@ -187,6 +213,7 @@ export interface Wallet {
   balance_micros: number;
   top_up_url: string;
   linked_at: string | null;
+  prepaid_remaining_percent?: number | null;
 }
 
 /** GET /api/v1/wallet. */
@@ -209,6 +236,127 @@ export async function readWallet(key: string): Promise<{ status: number; wallet:
       balance_micros: b.balance_micros ?? 0,
     } as Wallet,
   };
+}
+
+/** The words of the gate. The same in every publik module. */
+export function gateScreen(id: GateScreen["id"], w: Wallet | null, note: string | null = null, message?: string): GateScreen {
+  if (id === "unreachable") {
+    return { id, title: "Sign in with publik", body: message ?? "publik is not reachable. Check your connection.", note, buttons: [{ action: "retry", label: "Retry" }] };
+  }
+  if (id === "sign_in") {
+    return {
+      id,
+      title: "Sign in with publik",
+      note,
+      buttons: [{ action: "sign_in", label: "Sign in with publik" }],
+      body: "This app uses your publik account. Click Sign in with publik, then sign in in your browser. This window continues when you are signed in.",
+    };
+  }
+  const who = w?.account?.handle ? `You are signed in as @${w.account.handle}.` : "You are signed in to publik.";
+  if (!w || (w.plan.kind === "none" && w.balance_micros === 0)) {
+    return {
+      id,
+      title: "Choose how to pay for AI",
+      note,
+      body: `${who} This app uses AI. Get a publik plan, or use your own key.`,
+      buttons: [{ action: "get_plan", label: "Get a plan" }, { action: "own_key", label: "Use my own key" }],
+    };
+  }
+  const what = w.plan.kind === "plan" ? `Your plan: ${w.plan.label ?? "publik"}.` : "You have publik use ready.";
+  return {
+    id,
+    title: "Connect your plan",
+    note,
+    body: `${who} ${what} Connect it to use AI in this app, or use your own key.`,
+    buttons: [{ action: "connect", label: "Connect your plan" }, { action: "own_key", label: "Use my own key" }],
+  };
+}
+
+async function ask(ui: GateUI, screen: GateScreen, key?: string, until?: (w: Wallet) => boolean): Promise<GateAction | "done" | "timeout"> {
+  const stop = new AbortController();
+  const poll = async (): Promise<"done" | "timeout"> => {
+    for (const end = Date.now() + POLL_LIMIT_MS; Date.now() < end && !stop.signal.aborted; ) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      if (stop.signal.aborted) break;
+      const w = await readWallet(key!).then((r) => r.wallet, () => null);
+      if (w && until!(w)) return "done";
+    }
+    return "timeout";
+  };
+  try {
+    return await Promise.race([ui.show(screen, stop.signal), ...(until ? [poll()] : [])]);
+  } finally {
+    stop.abort();
+  }
+}
+
+/** The gate: resolves once the person is signed in; `choice` is null when USES_AI is false. */
+export async function ensureSignedIn(ui: GateUI): Promise<{ key: string; wallet: Wallet; choice: Choice | null }> {
+  if (process.env.PUBLIK_SELF_TEST) {
+    process.stdout.write(`${await selfTest()}\n`, () => process.exit(0));
+    await new Promise(() => {});
+  }
+  let signNote: string | null = null, signPoll = true, planNote: string | null = null, planPoll = false;
+  for (;;) {
+    let c: Pick<PublikCredential, "key" | "base_url" | "install_id" | "claim_url">, r: Awaited<ReturnType<typeof readWallet>>;
+    try {
+      c = process.env.PUBLIK_API_KEY
+        ? { key: process.env.PUBLIK_API_KEY, base_url: DEFAULT_BASE_URL, install_id: "", claim_url: null }
+        : readCredential() ?? (await provision());
+      r = await readWallet(c.key);
+    } catch (e) {
+      const offline = e instanceof TypeError || (e instanceof Error && /abort|timeout/i.test(e.name));
+      await ask(ui, gateScreen("unreachable", null, null, offline ? undefined : String((e as Error).message)));
+      continue;
+    }
+    if (r.status === 401 && !process.env.PUBLIK_API_KEY) {
+      writeCredential(null);
+      continue;
+    }
+    const w = r.wallet;
+    if (!w) {
+      await ask(ui, gateScreen("unreachable", null, null, r.message ?? undefined));
+      continue;
+    }
+    if (w.claim_state !== "claimed") {
+      const a = await ask(ui, gateScreen("sign_in", w, signNote), c.key, signPoll ? (x) => x.claim_state === "claimed" : undefined);
+      if (a === "sign_in") {
+        ui.openUrl(w.claim_url ?? c.claim_url ?? `${ORIGIN}/wallet`);
+        signNote = "Waiting for you to sign in in your browser.";
+        signPoll = true;
+      }
+      if (a === "timeout") {
+        signNote = "No sign-in after 10 minutes. Click Sign in with publik to try again.";
+        signPoll = false;
+      }
+      continue;
+    }
+    let choice: Choice | null = USES_AI ? readCredential()?.choice ?? null : null;
+    if (USES_AI && !choice) {
+      if (w.plan.kind !== "none" || w.balance_micros > 0) {
+        planNote = null;
+        planPoll = false;
+      }
+      const a = await ask(ui, gateScreen("choose", w, planNote), c.key, planPoll ? (x) => x.plan.kind !== "none" || x.balance_micros > 0 : undefined);
+      planNote = null;
+      planPoll = false;
+      if (a === "get_plan") {
+        ui.openUrl(w.top_up_url);
+        planNote = "Finish in your browser, then click Connect your plan.";
+        planPoll = true;
+        continue;
+      }
+      if (a === "done") continue;
+      if (a === "timeout") {
+        planNote = "No plan detected yet. Click Get a plan or Use my own key.";
+        continue;
+      }
+      choice = a === "connect" ? "publik" : "own_key";
+      setChoice(choice);
+    }
+    startTelemetry();
+    return { key: c.key, wallet: w, choice };
+  }
 }
 
 /** Builder check, run by the BUILT app: start it with PUBLIK_SELF_TEST=1, print this line, exit. */
